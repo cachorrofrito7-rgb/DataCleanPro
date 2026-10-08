@@ -11,10 +11,7 @@ app.secret_key = "datacleaner_segredo_oficial_definitivo"
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# SEU TOKEN REAL DO MERCADO PAGO
 ACCESS_TOKEN_MP = "APP_USR-7867386358048993-100810-4465684464772bfe6f520899f45e0b59-725141812"
-
-# SUA CHAVE PIX OFICIAL (Fallback e recebimento direto)
 MINHA_CHAVE_PIX = "e32c6a95-8ef0-471f-ae7a-4072a635be4e"
 
 def limpar_nome(nome):
@@ -26,11 +23,9 @@ def limpar_email(email):
     return str(email).strip().lower()
 
 def limpar_telefone(tel):
-    if pd.isna(tel):
-        return ""
+    if pd.isna(tel): return ""
     numeros = re.sub(r'\D', '', str(tel))
-    if not numeros:
-        return ""
+    if not numeros: return ""
     if numeros.startswith('55') and len(numeros) in [12, 13]:
         numeros = numeros[2:]
     if len(numeros) == 11:
@@ -115,7 +110,7 @@ def cotar():
             
         total_linhas = len(df)
         
-        # VALOR DE TESTE DE R$ 0,01 PARA O ADMINISTRADOR (ou tabela progressiva para demais clientes)
+        # VALOR DE TESTE R$ 0,01 PARA O ADMIN
         if session.get('usuario') == "cachorrofrito7@gmail.com":
             valor_total = 0.01
         else:
@@ -134,7 +129,7 @@ def cotar():
         payment_id = "manual_pix"
         qr_code_gerado = None
         
-        # Tenta criar via API do Mercado Pago
+        # Tenta API do Mercado Pago
         headers = {
             "Authorization": f"Bearer {ACCESS_TOKEN_MP}",
             "Content-Type": "application/json",
@@ -158,7 +153,7 @@ def cotar():
         except:
             pass
             
-        # Fallback seguro com BR Code nativo caso a API externa tenha restrições
+        # GARANTIA ABSOLUTA: Se a API falhar ou não retornar, usa o Pix Copia e Cola nativo
         if not qr_code_gerado:
             qr_code_gerado = gerar_payload_pix(MINHA_CHAVE_PIX, "DataCleaner", "Sao Paulo", valor_total)
             
@@ -226,7 +221,6 @@ def processar_e_baixar():
     else:
         df = pd.read_excel(input_path)
         
-    # Aplicar limpeza avançada detetando colunas independentemente de maiúsculas/minúsculas
     for col in df.columns:
         col_lower = col.lower()
         if 'nome' in col_lower:
@@ -236,10 +230,8 @@ def processar_e_baixar():
         elif 'tel' in col_lower or 'cel' in col_lower or 'fone' in col_lower or 'whatsapp' in col_lower:
             df[col] = df[col].apply(limpar_telefone)
             
-    # Remover duplicadas
     df = df.drop_duplicates()
     
-    # Ordenação alfabética automática com base na coluna de nome
     coluna_nome = next((c for c in df.columns if 'nome' in c.lower()), None)
     if coluna_nome:
         df = df.sort_values(by=coluna_nome, ascending=True)
