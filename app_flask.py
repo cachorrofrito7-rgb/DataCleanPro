@@ -110,9 +110,9 @@ def cotar():
             
         total_linhas = len(df)
         
-        # VALOR DE TESTE R$ 0,01 PARA O ADMIN
+        # VALOR DE TESTE R$ 0,00 PARA O ADMIN
         if session.get('usuario') == "cachorrofrito7@gmail.com":
-            valor_total = 0.01
+            valor_total = 0.00
         else:
             if total_linhas <= 5000:
                 preco = 0.20
