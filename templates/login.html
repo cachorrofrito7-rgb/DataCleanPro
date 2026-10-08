@@ -1,4 +1,37 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><title>DataCleaner - Login</title><style>body{font-family:sans-serif;background:#f4f7f6;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}.card{background:#fff;padding:30px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);width:300px;}input,button{width:100%;padding:10px;margin:10px 0;border:1px solid #ccc;border-radius:5px;}button{background:#007bff;color:#white;border:none;cursor:pointer;}button:hover{background:#0056b3;}.erro{color:red;font-size:14px;}</style></head>
-<body><div class="card"><h2>DataCleaner</h2><form action="/login" method="POST"><input type="email" name="email" placeholder="E-mail" required><input type="password" name="senha" placeholder="Senha" required><button type="submit">Entrar</button>{% if erro %}<p class="erro">{{ erro }}</p>{% endif %}</form></div></body></html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar - DataCleaner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-sky-400 tracking-tight">DataCleaner Pro</h1>
+            <p class="text-slate-400 text-sm mt-2">Higienização e ordenação inteligente de leads</p>
+        </div>
+
+        {% if erro %}
+        <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm p-3 rounded-xl mb-4 text-center">
+            {{ erro }}
+        </div>
+        {% endif %}
+
+        <form action="/login" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">E-mail de Acesso</label>
+                <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 transition">
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Palavra-passe / Senha</label>
+                <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 transition">
+            </div>
+            <button type="submit" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-sky-500/20 mt-2">
+                Aceder à Plataforma
+            </button>
+        </form>
+    </div>
+</body>
+</html>
