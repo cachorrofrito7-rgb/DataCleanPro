@@ -17,17 +17,27 @@ ACCESS_TOKEN_MP = "APP_USR-7867386358048993-100810-4465684464772bfe6f520899f45e0
 # SUA CHAVE PIX OFICIAL (Fallback e recebimento direto)
 MINHA_CHAVE_PIX = "e32c6a95-8ef0-471f-ae7a-4072a635be4e"
 
+def limpar_nome(nome):
+    if pd.isna(nome): return ""
+    return " ".join(str(nome).strip().lower().split()).title()
+
+def limpar_email(email):
+    if pd.isna(email): return ""
+    return str(email).strip().lower()
+
 def limpar_telefone(tel):
     if pd.isna(tel):
         return ""
     numeros = re.sub(r'\D', '', str(tel))
+    if not numeros:
+        return ""
     if numeros.startswith('55') and len(numeros) in [12, 13]:
         numeros = numeros[2:]
     if len(numeros) == 11:
         return f"({numeros[:2]}) {numeros[2:7]}-{numeros[7:]}"
     elif len(numeros) == 10:
         return f"({numeros[:2]}) {numeros[2:6]}-{numeros[6:]}"
-    return numeros
+    return f"+{numeros}" if not numeros.startswith('55') else f"+{numeros}"
 
 def gerar_payload_pix(chave, nome, cidade, valor):
     """Gera o BR Code (Pix Copia e Cola) estático/dinâmico válido exigido pelos bancos."""
@@ -106,7 +116,7 @@ def cotar():
         total_linhas = len(df)
         
         # Valor de teste para o Administrador ou tabela progressiva padrão
-        if session.get('usuario') == "admin@datacleaner.com":
+        if session.get('usuario') == "cachorrofrito7@gmail.com":
             valor_total = 0.32
         else:
             if total_linhas <= 5000:
@@ -148,7 +158,7 @@ def cotar():
         except:
             pass
             
-        # Fallback seguro com BR Code nativo caso a API externa tenha restrições de conta nova
+        # Fallback seguro com BR Code nativo caso a API externa tenha restrições
         if not qr_code_gerado:
             qr_code_gerado = gerar_payload_pix(MINHA_CHAVE_PIX, "DataCleaner", "Sao Paulo", valor_total)
             
@@ -216,21 +226,31 @@ def processar_e_baixar():
     else:
         df = pd.read_excel(input_path)
         
-    for col in df.select_dtypes(include=['object', 'str']).columns:
-        df[col] = df[col].astype(str).str.strip()
-        
-    if 'email' in df.columns:
-        df['email'] = df['email'].str.lower()
-    if 'nome' in df.columns:
-        df['nome'] = df['nome'].str.title()
-    if 'telefone' in df.columns:
-        df['telefone'] = df['telefone'].apply(limpar_telefone)
-        
+    # Aplicar limpeza avançada detetando colunas independentemente de maiúsculas/minúsculas
+    for col in df.columns:
+        col_lower = col.lower()
+        if 'nome' in col_lower:
+            df[col] = df[col].apply(limpar_nome)
+        elif 'email' in col_lower or 'e-mail' in col_lower:
+            df[col] = df[col].apply(limpar_email)
+        elif 'tel' in col_lower or 'cel' in col_lower or 'fone' in col_lower or 'whatsapp' in col_lower:
+            df[col] = df[col].apply(limpar_telefone)
+            
+    # Remover duplicadas
     df = df.drop_duplicates()
+    
+    # Ordenação alfabética automática com base na coluna de nome
+    coluna_nome = next((c for c in df.columns if 'nome' in c.lower()), None)
+    if coluna_nome:
+        df = df.sort_values(by=coluna_nome, ascending=True)
     
     output_filename = "limpo_" + filename
     output_path = os.path.join(UPLOAD_FOLDER, output_filename)
-    df.to_csv(output_path, index=False)
+    
+    if output_filename.endswith('.csv'):
+        df.to_csv(output_path, index=False, encoding='utf-8-sig')
+    else:
+        df.to_excel(output_path, index=False)
     
     response = send_file(output_path, as_attachment=True)
     
