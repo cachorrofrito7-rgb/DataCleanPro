@@ -1,0 +1,4 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Painel - DataCleaner</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:50px;text-align:center;}.card{background:#fff;padding:40px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);display:inline-block;}input,button{padding:10px;margin:10px 0;border-radius:5px;border:1px solid #ccc;}button{background:#28a745;color:white;border:none;cursor:pointer;}button:hover{background:#218838;}.sair{color:red;text-decoration:none;display:block;margin-top:20px;}</style></head>
+<body><div class="card"><h2>Bem-vindo, {{ email }}</h2><p>Envie o seu ficheiro CSV ou Excel para higienização:</p><form action="/cotar" method="POST" enctype="multipart/form-data"><input type="file" name="file" accept=".csv, .xlsx" required><br><button type="submit">Processar e Pagar via Pix</button></form><a class="sair" href="/logout">Sair</a></div></body></html>
