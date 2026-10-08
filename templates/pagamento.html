@@ -1,4 +1,71 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Pagamento Pix - DataCleaner</title><style>body{font-family:sans-serif;background:#f4f7f6;text-align:center;padding:30px;}.card{background:#fff;padding:30px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);display:inline-block;max-width:400px;}textarea{width:100%;height:80px;font-size:12px;margin:10px 0;}.btn{background:#007bff;color:white;padding:12px 20px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;display:inline-block;margin-top:10px;}.btn:hover{background:#0056b3;}</style></head>
-<body><div class="card"><h2>Pagamento via Pix</h2><p><b>Ficheiro:</b> {{ filename }}</p><p><b>Total de Leads:</b> {{ total_linhas }} linhas</p><p><b>Valor Total:</b> <span style="color:green;font-weight:bold;">R$ {{ valor_total }}</span></p><p>Copie o código abaixo e pague no app do seu banco:</p><textarea readonly>{{ qr_code }}</textarea><br><a class="btn" href="/verificar_pagamento">Verificar Pagamento Automaticamente</a></div></body></html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento Pix - DataCleaner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+        <h2 class="text-2xl font-bold text-sky-400 mb-2">Finalizar Pagamento Pix</h2>
+        <p class="text-slate-400 text-sm mb-6">Ficheiro: <span class="text-slate-200 font-semibold">{{ filename }}</span> ({{ total_linhas }} linhas)</p>
+        
+        <div class="bg-slate-800 p-4 rounded-xl mb-6 border border-slate-700">
+            <span class="text-xs uppercase tracking-wider text-slate-400">Total a Pagar</span>
+            <div class="text-3xl font-extrabold text-emerald-400 mt-1">R$ {{ valor_total }}</div>
+        </div>
+
+        <!-- Espaço para o QR Code visual gerado automaticamente -->
+        <div class="bg-white p-4 rounded-xl inline-block mb-6 shadow-md">
+            <div id="qrcode"></div>
+        </div>
+
+        <p class="text-xs text-slate-400 mb-2">Pix Copia e Cola (Cole no app do seu banco):</p>
+        <div class="relative mb-6">
+            <input type="text" id="pixCode" value="{{ qr_code }}" readonly class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg p-3 select-all focus:outline-none">
+        </div>
+
+        <button onclick="copiarPix()" id="btnCopiar" class="w-full bg-sky-500 hover:bg-sky-600 text-slate-950 font-bold py-3 rounded-xl transition duration-200 mb-4 shadow-lg shadow-sky-500/20">
+            📋 Copiar Código Pix
+        </button>
+
+        <a href="/verificar_pagamento" class="block w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-600/20 text-center">
+            🔄 Já fiz o Pix / Verificar Pagamento
+        </a>
+
+        <a href="/logout" class="block mt-6 text-xs text-slate-500 hover:text-slate-400 transition">Sair / Cancelar</a>
+    </div>
+
+    <script>
+        // Gera o QR Code visual automaticamente através do código Pix Copia e Cola
+        var qrText = "{{ qr_code }}";
+        if(qrText) {
+            new QRCode(document.getElementById("qrcode"), {
+                text: qrText,
+                width: 180,
+                height: 180,
+            });
+        }
+
+        function copiarPix() {
+            var copyText = document.getElementById("pixCode");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value);
+            
+            var btn = document.getElementById("btnCopiar");
+            btn.innerText = "✅ Código Copiado com Sucesso!";
+            btn.classList.remove("bg-sky-500", "hover:bg-sky-600");
+            btn.classList.add("bg-emerald-500", "text-white");
+            
+            setTimeout(() => {
+                btn.innerText = "📋 Copiar Código Pix";
+                btn.classList.remove("bg-emerald-500", "text-white");
+                btn.classList.add("bg-sky-500", "hover:bg-sky-600");
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
