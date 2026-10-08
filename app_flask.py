@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, send_file, redirect, url_for, session
+from datetime import timedelta
 import pandas as pd
 import re
 import os
@@ -7,6 +8,9 @@ import uuid
 
 app = Flask(__name__)
 app.secret_key = "datacleaner_segredo_oficial_definitivo"
+
+# Configuração para a sessão expirar após 5 minutos de inatividade
+app.permanent_session_lifetime = timedelta(minutes=5)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -35,7 +39,6 @@ def limpar_telefone(tel):
     return f"+{numeros}" if not numeros.startswith('55') else f"+{numeros}"
 
 def gerar_payload_pix(chave, nome, cidade, valor):
-    """Gera o BR Code (Pix Copia e Cola) estático/dinâmico válido exigido pelos bancos."""
     valor_str = f"{float(valor):.2f}"
     
     def formato_campo(id_campo, valor_campo):
@@ -65,6 +68,10 @@ def gerar_payload_pix(chave, nome, cidade, valor):
                 crc = crc << 1
             crc &= 0xFFFF
     return payload + f"{crc:04X}"
+
+@app.before_request
+def tornar_sessao_permanente():
+    session.permanent = True
 
 @app.route('/')
 def index():
@@ -110,7 +117,7 @@ def cotar():
             
         total_linhas = len(df)
         
-        # VALOR DE TESTE R$ 0,00 PARA O ADMIN
+        # ISENÇÃO TOTAL (R$ 0,00) PARA O ADMINISTRADOR
         if session.get('usuario') == "cachorrofrito7@gmail.com":
             valor_total = 0.00
         else:
@@ -129,7 +136,11 @@ def cotar():
         payment_id = "manual_pix"
         qr_code_gerado = None
         
-        # Tenta API do Mercado Pago
+        # Se for administrador com valor 0, libera direto sem precisar cobrar
+        if valor_total == 0.00:
+            session['pago'] = True
+            return redirect(url_for('tela_download'))
+        
         headers = {
             "Authorization": f"Bearer {ACCESS_TOKEN_MP}",
             "Content-Type": "application/json",
@@ -153,7 +164,6 @@ def cotar():
         except:
             pass
             
-        # GARANTIA ABSOLUTA: Se a API falhar ou não retornar, usa o Pix Copia e Cola nativo
         if not qr_code_gerado:
             qr_code_gerado = gerar_payload_pix(MINHA_CHAVE_PIX, "DataCleaner", "Sao Paulo", valor_total)
             
@@ -210,7 +220,7 @@ def processar_e_baixar():
     if not session.get('pago') or 'filename_pendente' not in session:
         return "Acesso negado. O pagamento é obrigatório.", 403
         
-    filename = session['filename_pendente']
+    filename = session['filename_pendnote'] if 'filename_pendnote' in session else session['filename_pendente']
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     
     if not os.path.exists(input_path):
@@ -251,6 +261,7 @@ def processar_e_baixar():
         try:
             if os.path.exists(input_path): os.remove(input_path)
             if os.path.exists(output_path): os.remove(output_path)
+            # Expira o login imediatamente após o download
             session.clear()
         except:
             pass
