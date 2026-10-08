@@ -1,4 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Aguardando Pagamento</title><style>body{font-family:sans-serif;background:#f4f7f6;text-align:center;padding:50px;}.card{background:#fff;padding:40px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);display:inline-block;}</style></head>
-<body><div class="card"><h2>Aguardando Compensação do Pix...</h2><p>{{ aviso }}</p><p>Valor: R$ {{ valor_total }}</p><br><a href="/pagamento">Tentar novamente / Ver QR Code</a></div></body></html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aguardando Pagamento - DataCleaner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+        <div class="inline-block p-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-full text-2xl mb-4 animate-pulse">⏳</div>
+        <h2 class="text-2xl font-bold text-amber-400 mb-2">Aguardando Compensação</h2>
+        <p class="text-slate-400 text-sm mb-6">{{ aviso }}</p>
+        
+        <div class="bg-slate-800 p-4 rounded-xl mb-6 border border-slate-700 text-left">
+            <div class="text-xs text-slate-400">Ficheiro: <span class="text-slate-200 font-medium">{{ filename }}</span></div>
+            <div class="text-xs text-slate-400 mt-1">Valor: <span class="text-emerald-400 font-bold">R$ {{ valor_total }}</span></div>
+        </div>
+
+        <a href="/verificar_pagamento" class="block w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3 rounded-xl transition duration-200 mb-3 shadow-lg shadow-sky-500/20 text-center">
+            🔄 Verificar Pagamento Novamente
+        </a>
+        <a href="/pagamento" class="block w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-xl transition duration-200 text-sm">
+            ← Ver QR Code Pix
+        </a>
+    </div>
+</body>
+</html>
