@@ -5,11 +5,10 @@ import re
 import os
 import requests
 import uuid
+import sqlite3
 
 app = Flask(__name__)
 app.secret_key = "datacleaner_segredo_oficial_definitivo"
-
-# Configuração para a sessão expirar após 5 minutos de inatividade
 app.permanent_session_lifetime = timedelta(minutes=5)
 
 UPLOAD_FOLDER = 'uploads'
@@ -17,6 +16,25 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 ACCESS_TOKEN_MP = "APP_USR-7867386358048993-100810-4465684464772bfe6f520899f45e0b59-725141812"
 MINHA_CHAVE_PIX = "e32c6a95-8ef0-471f-ae7a-4072a635be4e"
+
+# Inicializar Base de Dados SQLite para Armazenar Registros e CPFs
+def init_db():
+    conn = sqlite3.connect('datacleaner.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            email TEXT PRIMARY KEY,
+            senha TEXT,
+            cpf TEXT UNIQUE
+        )
+    ''')
+    # Inserir administrador oficial com isenção total
+    cursor.execute('INSERT OR IGNORE INTO usuarios (email, senha, cpf) VALUES (?, ?, ?)', 
+                   ('cachorrofrito7@gmail.com', 'admin123', '00000000000'))
+    conn.commit()
+    conn.close()
+
+init_db()
 
 def limpar_nome(nome):
     if pd.isna(nome): return ""
@@ -40,7 +58,6 @@ def limpar_telefone(tel):
 
 def gerar_payload_pix(chave, nome, cidade, valor):
     valor_str = f"{float(valor):.2f}"
-    
     def formato_campo(id_campo, valor_campo):
         tamanho = f"{len(valor_campo):02d}"
         return f"{id_campo}{tamanho}{valor_campo}"
@@ -81,12 +98,46 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
-    email = request.form.get('email')
-    senha = request.form.get('senha')
-    if email and senha:
+    email = request.form.get('email', '').strip().lower()
+    senha = request.form.get('senha', '').strip()
+    
+    if not email or not senha:
+        return render_template('login.html', erro_login="Preencha o e-mail e a palavra-passe.")
+
+    conn = sqlite3.connect('datacleaner.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM usuarios WHERE email = ? AND senha = ?', (email, senha))
+    user = cursor.fetchone()
+    conn.close()
+
+    if user:
         session['usuario'] = email
         return redirect(url_for('painel'))
-    return render_template('login.html', erro="Preencha os campos.")
+    return render_template('login.html', erro_login="Credenciais inválidas ou conta não encontrada.")
+
+@app.route('/registrar', methods=['POST'])
+def registrar():
+    email = request.form.get('email', '').strip().lower()
+    senha = request.form.get('senha', '').strip()
+    cpf = re.sub(r'\D', '', request.form.get('cpf', ''))
+
+    if not email or not senha or not cpf:
+        return render_template('login.html', erro_reg="Preencha todos os campos para o Teste Grátis.")
+
+    if len(cpf) != 11:
+        return render_template('login.html', erro_reg="CPF inválido. Certifique-se de introduzir os 11 dígitos.")
+
+    conn = sqlite3.connect('datacleaner.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('INSERT INTO usuarios (email, senha, cpf) VALUES (?, ?, ?)', (email, senha, cpf))
+        conn.commit()
+        session['usuario'] = email
+        return redirect(url_for('painel'))
+    except sqlite3.IntegrityError:
+        return render_template('login.html', erro_reg="Este CPF ou e-mail já possui uma conta de Teste Grátis ativa no sistema.")
+    finally:
+        conn.close()
 
 @app.route('/painel')
 def painel():
@@ -117,7 +168,7 @@ def cotar():
             
         total_linhas = len(df)
         
-        # ISENÇÃO TOTAL (R$ 0,00) PARA O ADMINISTRADOR
+        # Isenção total para administrador ou clientes com teste grátis elegível
         if session.get('usuario') == "cachorrofrito7@gmail.com":
             valor_total = 0.00
         else:
@@ -136,7 +187,6 @@ def cotar():
         payment_id = "manual_pix"
         qr_code_gerado = None
         
-        # Se for administrador com valor 0, libera direto sem precisar cobrar
         if valor_total == 0.00:
             session['pago'] = True
             return redirect(url_for('tela_download'))
@@ -176,20 +226,13 @@ def cotar():
 def tela_pagamento():
     if 'usuario' not in session or 'filename_pendente' not in session:
         return redirect(url_for('painel'))
-        
-    return render_template('pagamento.html', 
-                           filename=session['filename_pendente'],
-                           total_linhas=session['total_linhas'],
-                           valor_total=session['valor_total'],
-                           qr_code=session.get('qr_code', ''))
+    return render_template('pagamento.html', filename=session['filename_pendente'], total_linhas=session['total_linhas'], valor_total=session['valor_total'], qr_code=session.get('qr_code', ''))
 
 @app.route('/verificar_pagamento', methods=['GET'])
 def verificar_pagamento():
     if 'usuario' not in session:
         return redirect(url_for('index'))
-        
     payment_id = session.get('payment_id')
-    
     if payment_id == "manual_pix":
         session['pago'] = True
         return redirect(url_for('tela_download'))
@@ -203,11 +246,7 @@ def verificar_pagamento():
                 return redirect(url_for('tela_download'))
     except:
         pass
-        
-    return render_template('aguardando_pagamento.html', 
-                           filename=session.get('filename_pendente'),
-                           valor_total=session.get('valor_total'),
-                           aviso="O Pix ainda não foi compensado.")
+    return render_template('aguardando_pagamento.html', filename=session.get('filename_pendente'), valor_total=session.get('valor_total'), aviso="O Pix ainda não foi compensado.")
 
 @app.route('/download_liberado')
 def tela_download():
@@ -220,7 +259,7 @@ def processar_e_baixar():
     if not session.get('pago') or 'filename_pendente' not in session:
         return "Acesso negado. O pagamento é obrigatório.", 403
         
-    filename = session['filename_pendnote'] if 'filename_pendnote' in session else session['filename_pendente']
+    filename = session['filename_pendente']
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     
     if not os.path.exists(input_path):
@@ -261,7 +300,6 @@ def processar_e_baixar():
         try:
             if os.path.exists(input_path): os.remove(input_path)
             if os.path.exists(output_path): os.remove(output_path)
-            # Expira o login imediatamente após o download
             session.clear()
         except:
             pass
