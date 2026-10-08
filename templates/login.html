@@ -3,35 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entrar - DataCleaner Pro</title>
+    <title>Acesso - DataCleaner Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .glass-card {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.15);
+        }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
-    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full">
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-extrabold text-sky-400 tracking-tight">DataCleaner Pro</h1>
-            <p class="text-slate-400 text-sm mt-2">Higienização e ordenação inteligente de leads</p>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen relative overflow-hidden">
+    
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="glass-card p-8 rounded-3xl shadow-2xl max-w-md w-full relative z-10 mx-4">
+        
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 text-2xl mb-3 shadow-inner">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h1 class="text-2xl font-extrabold text-white tracking-tight">DataCleaner <span class="text-sky-400">Pro</span></h1>
         </div>
 
-        {% if erro %}
-        <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm p-3 rounded-xl mb-4 text-center">
-            {{ erro }}
-        </div>
-        {% endif %}
-
-        <form action="/login" method="POST" class="space-y-4">
-            <div>
-                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">E-mail de Acesso</label>
-                <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 transition">
-            </div>
-            <div>
-                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Palavra-passe / Senha</label>
-                <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 transition">
-            </div>
-            <button type="submit" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-sky-500/20 mt-2">
-                Aceder à Plataforma
+        <!-- Seletor de Abas (Entrar / Teste Grátis) -->
+        <div class="flex bg-slate-900 p-1.5 rounded-2xl mb-6 border border-slate-800">
+            <button onclick="mudarAba('login')" id="btnTabLogin" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 bg-sky-500 text-slate-950 shadow-md">
+                Entrar
             </button>
-        </form>
+            <button onclick="mudarAba('registro')" id="btnTabRegistro" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 text-slate-400 hover:text-white">
+                Teste Grátis
+            </button>
+        </div>
+
+        <!-- FORMULÁRIO DE LOGIN -->
+        <div id="formLogin">
+            {% if erro_login %}
+            <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl mb-4 text-center">
+                <i class="fa-solid fa-circle-exclamation mr-1"></i> {{ erro_login }}
+            </div>
+            {% endif %}
+
+            <form action="/login" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Conta / E-mail</label>
+                    <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Palavra-passe</label>
+                    <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3.5 rounded-xl transition duration-200 shadow-lg shadow-sky-500/20 text-sm mt-2">
+                    Aceder ao Sistema
+                </button>
+            </form>
+        </div>
+
+        <!-- FORMULÁRIO DE REGISTO (TESTE GRÁTIS COM CPF) -->
+        <div id="formRegistro" class="hidden">
+            {% if erro_reg %}
+            <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl mb-4 text-center">
+                <i class="fa-solid fa-circle-exclamation mr-1"></i> {{ erro_reg }}
+            </div>
+            {% endif %}
+
+            <form action="/registrar" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Definir Conta / E-mail</label>
+                    <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">CPF (Registo Único)</label>
+                    <input type="text" name="cpf" id="cpf" required placeholder="000.000.000-00" maxlength="14" oninput="mascaraCpf(this)" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Criar Senha</label>
+                    <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl transition duration-200 shadow-lg shadow-emerald-500/20 text-sm mt-2">
+                    Resgatar Teste Grátis
+                </button>
+            </form>
+        </div>
+
     </div>
+
+    <script>
+        function mudarAba(aba) {
+            let fLogin = document.getElementById('formLogin');
+            let fReg = document.getElementById('formRegistro');
+            let bLogin = document.getElementById('btnTabLogin');
+            let bReg = document.getElementById('btnTabRegistro');
+
+            if(aba === 'login') {
+                fLogin.classList.remove('hidden');
+                fReg.classList.add('hidden');
+                bLogin.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 bg-sky-500 text-slate-950 shadow-md";
+                bReg.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 text-slate-400 hover:text-white";
+            } else {
+                fLogin.classList.add('hidden');
+                fReg.classList.remove('hidden');
+                bReg.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 bg-emerald-500 text-slate-950 shadow-md";
+                bLogin.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 text-slate-400 hover:text-white";
+            }
+        }
+
+        function mascaraCpf(i) {
+            let v = i.value;
+            if(isNaN(v[v.length-1])) {
+                i.value = v.substring(0, v.length-1);
+                return;
+            }
+            i.setAttribute("maxlength", "14");
+            if (v.length == 3 || v.length == 7) i.value += ".";
+            if (v.length == 11) i.value += "-";
+        }
+    </script>
 </body>
 </html>
