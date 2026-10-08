@@ -1,4 +1,29 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Painel - DataCleaner</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:50px;text-align:center;}.card{background:#fff;padding:40px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);display:inline-block;}input,button{padding:10px;margin:10px 0;border-radius:5px;border:1px solid #ccc;}button{background:#28a745;color:white;border:none;cursor:pointer;}button:hover{background:#218838;}.sair{color:red;text-decoration:none;display:block;margin-top:20px;}</style></head>
-<body><div class="card"><h2>Bem-vindo, {{ email }}</h2><p>Envie o seu ficheiro CSV ou Excel para higienização:</p><form action="/cotar" method="POST" enctype="multipart/form-data"><input type="file" name="file" accept=".csv, .xlsx" required><br><button type="submit">Processar e Pagar via Pix</button></form><a class="sair" href="/logout">Sair</a></div></body></html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - DataCleaner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full">
+        <div class="flex justify-between items-center mb-6">
+            <span class="text-xs font-semibold text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">{{ email }}</span>
+            <a href="/logout" class="text-xs text-rose-400 hover:text-rose-300 transition">Terminar Sessão</a>
+        </div>
+
+        <h2 class="text-2xl font-bold text-sky-400 mb-1">Carregar Ficheiro</h2>
+        <p class="text-slate-400 text-sm mb-6">Envie o seu ficheiro CSV ou Excel para limpeza automática, correção de ortografia e ordenação alfabética.</p>
+
+        <form action="/cotar" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <label class="border-2 border-dashed border-slate-700 hover:border-sky-500 bg-slate-800/50 hover:bg-slate-800 p-8 rounded-2xl cursor-pointer flex flex-col items-center justify-center transition duration-200 group block">
+                <span class="text-3xl mb-2">📂</span>
+                <span class="text-sm font-semibold text-slate-200 group-hover:text-sky-400 transition">Clique para selecionar ficheiro</span>
+                <span class="text-xs text-slate-500 mt-1">Formatos suportados: .csv, .xlsx</span>
+                <input type="file" name="file" accept=".csv, .xlsx" required class="hidden" onchange="this.form.submit()">
+            </label>
+        </form>
+    </div>
+</body>
+</html>
