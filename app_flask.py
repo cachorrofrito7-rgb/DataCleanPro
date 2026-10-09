@@ -17,7 +17,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ACCESS_TOKEN_MP = "APP_USR-7867386358048993-100810-4465684464772bfe6f520899f45e0b59-725141812"
 MINHA_CHAVE_PIX = "e32c6a95-8ef0-471f-ae7a-4072a635be4e"
 
-# Inicializar Base de Dados SQLite para Armazenar Registros e CPFs
 def init_db():
     conn = sqlite3.connect('datacleaner.db')
     cursor = conn.cursor()
@@ -28,9 +27,6 @@ def init_db():
             cpf TEXT UNIQUE
         )
     ''')
-    # Inserir administrador oficial com isenção total
-    cursor.execute('INSERT OR IGNORE INTO usuarios (email, senha, cpf) VALUES (?, ?, ?)', 
-                   ('cachorrofrito7@gmail.com', 'admin123', '00000000000'))
     conn.commit()
     conn.close()
 
@@ -102,7 +98,12 @@ def login():
     senha = request.form.get('senha', '').strip()
     
     if not email or not senha:
-        return render_template('login.html', erro_login="Preencha o e-mail e a palavra-passe.")
+        return render_template('login.html', erro_login="Preencha o e-mail e a palavra-passe.", aba_ativa="login")
+
+    # REGRA ESPECIAL: Administrador sempre tem acesso direto livre e isento
+    if email == "cachorrofrito7@gmail.com":
+        session['usuario'] = email
+        return redirect(url_for('painel'))
 
     conn = sqlite3.connect('datacleaner.db')
     cursor = conn.cursor()
@@ -113,7 +114,8 @@ def login():
     if user:
         session['usuario'] = email
         return redirect(url_for('painel'))
-    return render_template('login.html', erro_login="Credenciais inválidas ou conta não encontrada.")
+    
+    return render_template('login.html', erro_login="Credenciais inválidas ou conta não encontrada.", aba_ativa="login")
 
 @app.route('/registrar', methods=['POST'])
 def registrar():
@@ -122,10 +124,10 @@ def registrar():
     cpf = re.sub(r'\D', '', request.form.get('cpf', ''))
 
     if not email or not senha or not cpf:
-        return render_template('login.html', erro_reg="Preencha todos os campos para o Teste Grátis.")
+        return render_template('login.html', erro_reg="Preencha todos os campos para o Teste Grátis.", aba_ativa="registro")
 
     if len(cpf) != 11:
-        return render_template('login.html', erro_reg="CPF inválido. Certifique-se de introduzir os 11 dígitos.")
+        return render_template('login.html', erro_reg="CPF inválido. Introduza os 11 dígitos.", aba_ativa="registro")
 
     conn = sqlite3.connect('datacleaner.db')
     cursor = conn.cursor()
@@ -135,7 +137,7 @@ def registrar():
         session['usuario'] = email
         return redirect(url_for('painel'))
     except sqlite3.IntegrityError:
-        return render_template('login.html', erro_reg="Este CPF ou e-mail já possui uma conta de Teste Grátis ativa no sistema.")
+        return render_template('login.html', erro_reg="Este CPF ou e-mail já possui uma conta de Teste Grátis ativa.", aba_ativa="registro")
     finally:
         conn.close()
 
@@ -168,7 +170,7 @@ def cotar():
             
         total_linhas = len(df)
         
-        # Isenção total para administrador ou clientes com teste grátis elegível
+        # Isenção total para administrador
         if session.get('usuario') == "cachorrofrito7@gmail.com":
             valor_total = 0.00
         else:
