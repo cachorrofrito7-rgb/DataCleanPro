@@ -87,6 +87,11 @@ def gerar_payload_pix(chave, nome, cidade, valor):
 def tornar_sessao_permanente():
     session.permanent = True
 
+# ROTA DE VERIFICAÇÃO DO GOOGLE SEARCH CONSOLE
+@app.route('/googled2b6467c03a7583c.html')
+def google_verification():
+    return "google-site-verification: googled2b6467c03a7583c.html"
+
 # 1. PÁGINA DE BOAS-VINDAS OTIMIZADA PARA SEO
 HTML_INDEX = """
 <!DOCTYPE html>
@@ -97,12 +102,6 @@ HTML_INDEX = """
     <title>DataCleaner Pro - Higienização e Ordenação Inteligente de Leads</title>
     <meta name="description" content="Automatize a limpeza de bases de dados, correção ortográfica de nomes, formatação de telefones, e-mails e ordenação alfabética de leads em CSV e Excel em segundos.">
     <meta name="keywords" content="limpar base de leads, higienizar excel, formatar telefones planilha, organizador de leads, data cleaner">
-    
-    <!-- Open Graph / Redes Sociais -->
-    <meta property="og:title" content="DataCleaner Pro - Higienização Inteligente de Leads">
-    <meta property="og:description" content="Transforme bases de dados sujas em leads prontos para vendas instantaneamente. Teste grátis disponível!">
-    <meta property="og:type" content="website">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>.glass-card { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
@@ -122,7 +121,6 @@ HTML_INDEX = """
             </div>
         </div>
     </header>
-
     <main class="max-w-6xl mx-auto px-6 py-16 flex-1">
         <div class="text-center max-w-3xl mx-auto mb-16">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold mb-6">
@@ -138,39 +136,7 @@ HTML_INDEX = """
                 <i class="fa-solid fa-rocket"></i> Começar Teste Grátis Agora (1º Ficheiro Grátis)
             </a>
         </div>
-
-        <!-- Seção de Recursos / SEO Keywords -->
-        <div class="grid md:grid-cols-3 gap-8 mb-16">
-            <div class="glass-card p-8 rounded-3xl border border-slate-800">
-                <div class="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-xl mb-6">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white mb-3">Correção Automática</h3>
-                <p class="text-slate-400 text-sm leading-relaxed">
-                    Padroniza nomes próprios com letras maiúsculas/minúsculas corretas, remove espaços extras e formata e-mails automaticamente.
-                </p>
-            </div>
-            <div class="glass-card p-8 rounded-3xl border border-slate-800">
-                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl mb-6">
-                    <i class="fa-solid fa-phone"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white mb-3">Formatação de Telefones</h3>
-                <p class="text-slate-400 text-sm leading-relaxed">
-                    Ajusta números de telemóveis e telefones fixos adicionando o DDD correto no formato padrão brasileiro com segurança.
-                </p>
-            </div>
-            <div class="glass-card p-8 rounded-3xl border border-slate-800">
-                <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl mb-6">
-                    <i class="fa-solid fa-arrow-down-a-z"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white mb-3">Ordenação Alfabética</h3>
-                <p class="text-slate-400 text-sm leading-relaxed">
-                    Remove linhas duplicadas e ordena automaticamente toda a sua base de leads por ordem alfabética de nomes.
-                </p>
-            </div>
-        </div>
     </main>
-
     <footer class="w-full border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-500">
         <p>&copy; 2026 DataCleaner Pro. Todos os direitos reservados.</p>
     </footer>
