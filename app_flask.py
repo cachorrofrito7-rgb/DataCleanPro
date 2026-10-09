@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for, session
+from flask import Flask, render_template_string, request, send_file, redirect, url_for, session
 from datetime import timedelta
 import pandas as pd
 import re
@@ -87,11 +87,58 @@ def gerar_payload_pix(chave, nome, cidade, valor):
 def tornar_sessao_permanente():
     session.permanent = True
 
+# PÁGINA DE BOAS-VINDAS (LANDING PAGE) INTEGRADA
+HTML_INDEX = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataCleaner Pro - Higienização de Leads</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.glass-card { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
+    <header class="w-full border-b border-slate-900 bg-slate-950/80 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <span class="text-xl font-extrabold tracking-tight text-white">DataCleaner <span class="text-sky-400">Pro</span></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="/login_view" class="text-sm font-semibold text-slate-300 hover:text-white transition">Entrar</a>
+                <a href="/login_view" class="bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-bold px-5 py-2.5 rounded-xl transition shadow-lg shadow-sky-500/20">Teste Grátis</a>
+            </div>
+        </div>
+    </header>
+    <main class="max-w-6xl mx-auto px-6 py-16 flex-1 text-center">
+        <div class="max-w-3xl mx-auto mb-16">
+            <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Transforme bases de dados sujas em <span class="text-sky-400">Leads Prontos para Vendas</span>
+            </h1>
+            <p class="text-slate-400 text-base sm:text-lg mb-10">
+                Automatize a correção ortográfica, formatação de telefones/e-mails, remoção de duplicados e ordenação alfabética instantaneamente.
+            </p>
+            <a href="/login_view" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-8 py-4 rounded-2xl shadow-xl shadow-sky-500/25 transition">
+                <i class="fa-solid fa-rocket"></i> Começar Teste Grátis Agora
+            </a>
+        </div>
+    </main>
+    <footer class="w-full border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-500">
+        <p>&copy; 2026 DataCleaner Pro. Todos os direitos reservados.</p>
+    </footer>
+</body>
+</html>
+"""
+
 @app.route('/')
 def index():
     if 'usuario' in session:
         return redirect(url_for('painel'))
-    return render_template('index.html')
+    return render_template_string(HTML_INDEX)
 
 @app.route('/login_view')
 def login_view():
