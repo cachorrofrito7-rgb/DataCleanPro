@@ -91,6 +91,12 @@ def tornar_sessao_permanente():
 def index():
     if 'usuario' in session:
         return redirect(url_for('painel'))
+    return render_template('index.html')
+
+@app.route('/login_view')
+def login_view():
+    if 'usuario' in session:
+        return redirect(url_for('painel'))
     return render_template('login.html')
 
 @app.route('/login', methods=['POST'])
@@ -132,7 +138,6 @@ def registrar():
     conn = sqlite3.connect('datacleaner.db')
     cursor = conn.cursor()
     try:
-        # Cria o registo com teste_usado = 0 (ainda não gastou o teste gratuito)
         cursor.execute('INSERT INTO usuarios (email, senha, cpf, teste_usado) VALUES (?, ?, ?, 0)', (email, senha, cpf))
         conn.commit()
         session['usuario'] = email
@@ -172,7 +177,6 @@ def cotar():
         total_linhas = len(df)
         usuario_atual = session.get('usuario')
         
-        # Lógica de Isenção do Admin ou Teste Grátis (Única vez)
         if usuario_atual == "cachorrofrito7@gmail.com":
             valor_total = 0.00
         else:
@@ -182,13 +186,10 @@ def cotar():
             res = cursor.fetchone()
             
             if res and res[0] == 0:
-                # O utilizador ainda tem direito ao teste grátis neste primeiro ficheiro!
                 valor_total = 0.00
-                # Atualiza imediatamente para marcar que o teste gratuito foi consumido
                 cursor.execute('UPDATE usuarios SET teste_usado = 1 WHERE email = ?', (usuario_atual,))
                 conn.commit()
             else:
-                # Já gastou o teste grátis: aplica a tabela de preços normal por quantidade de linhas
                 if total_linhas <= 5000:
                     preco = 0.20
                 elif total_linhas <= 10000:
@@ -202,12 +203,10 @@ def cotar():
         session['total_linhas'] = total_linhas
         session['valor_total'] = f"{valor_total:.2f}"
         
-        # Se o valor for 0.00 (Admin ou 1º Teste Grátis), vai direto para o download liberado sem pedir Pix
         if valor_total == 0.00:
             session['pago'] = True
             return redirect(url_for('tela_download'))
         
-        # Caso contrário, gera o pagamento via Pix normal
         payment_id = "manual_pix"
         qr_code_gerado = None
         
