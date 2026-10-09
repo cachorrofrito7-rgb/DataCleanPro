@@ -87,20 +87,28 @@ def gerar_payload_pix(chave, nome, cidade, valor):
 def tornar_sessao_permanente():
     session.permanent = True
 
-# 1. PÁGINA DE BOAS-VINDAS
+# 1. PÁGINA DE BOAS-VINDAS OTIMIZADA PARA SEO
 HTML_INDEX = """
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DataCleaner Pro - Higienização de Leads</title>
+    <title>DataCleaner Pro - Higienização e Ordenação Inteligente de Leads</title>
+    <meta name="description" content="Automatize a limpeza de bases de dados, correção ortográfica de nomes, formatação de telefones, e-mails e ordenação alfabética de leads em CSV e Excel em segundos.">
+    <meta name="keywords" content="limpar base de leads, higienizar excel, formatar telefones planilha, organizador de leads, data cleaner">
+    
+    <!-- Open Graph / Redes Sociais -->
+    <meta property="og:title" content="DataCleaner Pro - Higienização Inteligente de Leads">
+    <meta property="og:description" content="Transforme bases de dados sujas em leads prontos para vendas instantaneamente. Teste grátis disponível!">
+    <meta property="og:type" content="website">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>.glass-card { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
-    <header class="w-full border-b border-slate-900 bg-slate-950/80 sticky top-0 z-50">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-slate-950">
+    <header class="w-full border-b border-slate-900 bg-slate-950/80 sticky top-0 z-50 backdrop-blur">
         <div class="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
@@ -114,19 +122,55 @@ HTML_INDEX = """
             </div>
         </div>
     </header>
-    <main class="max-w-6xl mx-auto px-6 py-16 flex-1 text-center">
-        <div class="max-w-3xl mx-auto mb-16">
+
+    <main class="max-w-6xl mx-auto px-6 py-16 flex-1">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold mb-6">
+                <i class="fa-solid fa-bolt"></i> Motor de Limpeza v3.0 Otimizado para Alta Performance
+            </div>
             <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-                Transforme bases de dados sujas em <span class="text-sky-400">Leads Prontos para Vendas</span>
+                Transforme bases de dados sujas em <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">Leads Prontos para Vendas</span>
             </h1>
             <p class="text-slate-400 text-base sm:text-lg mb-10">
-                Automatize a correção ortográfica, formatação de telefones/e-mails, remoção de duplicados e ordenação alfabética instantaneamente.
+                Automatize a correção ortográfica de nomes, formatação correta de telefones, normalização de e-mails, eliminação de duplicados e ordenação alfabética de planilhas CSV e Excel em segundos.
             </p>
-            <a href="/login_view" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-8 py-4 rounded-2xl shadow-xl shadow-sky-500/25 transition">
-                <i class="fa-solid fa-rocket"></i> Começar Teste Grátis Agora
+            <a href="/login_view" class="inline-flex items-center gap-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-slate-950 font-bold px-8 py-4 rounded-2xl shadow-xl shadow-sky-500/25 transition">
+                <i class="fa-solid fa-rocket"></i> Começar Teste Grátis Agora (1º Ficheiro Grátis)
             </a>
         </div>
+
+        <!-- Seção de Recursos / SEO Keywords -->
+        <div class="grid md:grid-cols-3 gap-8 mb-16">
+            <div class="glass-card p-8 rounded-3xl border border-slate-800">
+                <div class="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-xl mb-6">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-3">Correção Automática</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Padroniza nomes próprios com letras maiúsculas/minúsculas corretas, remove espaços extras e formata e-mails automaticamente.
+                </p>
+            </div>
+            <div class="glass-card p-8 rounded-3xl border border-slate-800">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl mb-6">
+                    <i class="fa-solid fa-phone"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-3">Formatação de Telefones</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Ajusta números de telemóveis e telefones fixos adicionando o DDD correto no formato padrão brasileiro com segurança.
+                </p>
+            </div>
+            <div class="glass-card p-8 rounded-3xl border border-slate-800">
+                <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl mb-6">
+                    <i class="fa-solid fa-arrow-down-a-z"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-3">Ordenação Alfabética</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Remove linhas duplicadas e ordena automaticamente toda a sua base de leads por ordem alfabética de nomes.
+                </p>
+            </div>
+        </div>
     </main>
+
     <footer class="w-full border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-500">
         <p>&copy; 2026 DataCleaner Pro. Todos os direitos reservados.</p>
     </footer>
