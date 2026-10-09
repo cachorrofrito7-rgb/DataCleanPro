@@ -1,125 +1,317 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acesso - DataCleaner Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .glass-card {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(56, 189, 248, 0.15);
-        }
-    </style>
-</head>
-<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen relative overflow-hidden">
+from flask import Flask, render_template, request, send_file, redirect, url_for, session
+from datetime import timedelta
+import pandas as pd
+import re
+import os
+import requests
+import uuid
+import sqlite3
+
+app = Flask(__name__)
+app.secret_key = "datacleaner_segredo_oficial_definitivo"
+app.permanent_session_lifetime = timedelta(minutes=5)
+
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+ACCESS_TOKEN_MP = "APP_USR-7867386358048993-100810-4465684464772bfe6f520899f45e0b59-725141812"
+MINHA_CHAVE_PIX = "e32c6a95-8ef0-471f-ae7a-4072a635be4e"
+
+def init_db():
+    conn = sqlite3.connect('datacleaner.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            email TEXT PRIMARY KEY,
+            senha TEXT,
+            cpf TEXT UNIQUE
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def limpar_nome(nome):
+    if pd.isna(nome): return ""
+    return " ".join(str(nome).strip().lower().split()).title()
+
+def limpar_email(email):
+    if pd.isna(email): return ""
+    return str(email).strip().lower()
+
+def limpar_telefone(tel):
+    if pd.isna(tel): return ""
+    numeros = re.sub(r'\D', '', str(tel))
+    if not numeros: return ""
+    if numeros.startswith('55') and len(numeros) in [12, 13]:
+        numeros = numeros[2:]
+    if len(numeros) == 11:
+        return f"({numeros[:2]}) {numeros[2:7]}-{numeros[7:]}"
+    elif len(numeros) == 10:
+        return f"({numeros[:2]}) {numeros[2:6]}-{numeros[6:]}"
+    return f"+{numeros}" if not numeros.startswith('55') else f"+{numeros}"
+
+def gerar_payload_pix(chave, nome, cidade, valor):
+    valor_str = f"{float(valor):.2f}"
+    def formato_campo(id_campo, valor_campo):
+        tamanho = f"{len(valor_campo):02d}"
+        return f"{id_campo}{tamanho}{valor_campo}"
+
+    payload = (
+        formato_campo("00", "01") +
+        formato_campo("26", formato_campo("00", "br.gov.bcb.pix") + formato_campo("01", chave)) +
+        formato_campo("52", "0000") +
+        formato_campo("53", "986") +
+        formato_campo("54", valor_str) +
+        formato_campo("58", "BR") +
+        formato_campo("59", nome[:25]) +
+        formato_campo("60", cidade[:15]) +
+        formato_campo("62", formato_campo("05", "DATACLEAN"))
+    )
     
-    <div class="absolute -top-40 -left-40 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    payload += "6304"
+    crc = 0xFFFF
+    for char in payload:
+        crc ^= (ord(char) << 8)
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = (crc << 1) ^ 0x1021
+            else:
+                crc = crc << 1
+            crc &= 0xFFFF
+    return payload + f"{crc:04X}"
 
-    <div class="glass-card p-8 rounded-3xl shadow-2xl max-w-md w-full relative z-10 mx-4">
+@app.before_request
+def tornar_sessao_permanente():
+    session.permanent = True
+
+@app.route('/')
+def index():
+    if 'usuario' in session:
+        return redirect(url_for('painel'))
+    return render_template('login.html')
+
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form.get('email', '').strip().lower()
+    senha = request.form.get('senha', '').strip()
+    
+    if not email or not senha:
+        return render_template('login.html', erro_login="Preencha o e-mail e a palavra-passe.", aba_ativa="login")
+
+    # REGRA ESPECIAL: Administrador sempre tem acesso direto livre e isento
+    if email == "cachorrofrito7@gmail.com":
+        session['usuario'] = email
+        return redirect(url_for('painel'))
+
+    conn = sqlite3.connect('datacleaner.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM usuarios WHERE email = ? AND senha = ?', (email, senha))
+    user = cursor.fetchone()
+    conn.close()
+
+    if user:
+        session['usuario'] = email
+        return redirect(url_for('painel'))
+    
+    return render_template('login.html', erro_login="Credenciais inválidas ou conta não encontrada.", aba_ativa="login")
+
+@app.route('/registrar', methods=['POST'])
+def registrar():
+    email = request.form.get('email', '').strip().lower()
+    senha = request.form.get('senha', '').strip()
+    cpf = re.sub(r'\D', '', request.form.get('cpf', ''))
+
+    if not email or not senha or not cpf:
+        return render_template('login.html', erro_reg="Preencha todos os campos para o Teste Grátis.", aba_ativa="registro")
+
+    if len(cpf) != 11:
+        return render_template('login.html', erro_reg="CPF inválido. Introduza os 11 dígitos.", aba_ativa="registro")
+
+    conn = sqlite3.connect('datacleaner.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('INSERT INTO usuarios (email, senha, cpf) VALUES (?, ?, ?)', (email, senha, cpf))
+        conn.commit()
+        session['usuario'] = email
+        return redirect(url_for('painel'))
+    except sqlite3.IntegrityError:
+        return render_template('login.html', erro_reg="Este CPF ou e-mail já possui uma conta de Teste Grátis ativa.", aba_ativa="registro")
+    finally:
+        conn.close()
+
+@app.route('/painel')
+def painel():
+    if 'usuario' not in session:
+        return redirect(url_for('index'))
+    return render_template('painel.html', email=session['usuario'])
+
+@app.route('/cotar', methods=['POST'])
+def cotar():
+    if 'usuario' not in session:
+        return redirect(url_for('index'))
         
-        <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 text-2xl mb-3 shadow-inner">
-                <i class="fa-solid fa-shield-halved"></i>
-            </div>
-            <h1 class="text-2xl font-extrabold text-white tracking-tight">DataCleaner <span class="text-sky-400">Pro</span></h1>
-        </div>
+    if 'file' not in request.files:
+        return "Nenhum ficheiro enviado", 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return "Ficheiro não selecionado", 400
 
-        <!-- Seletor de Abas (Entrar / Teste Grátis) -->
-        <div class="flex bg-slate-900 p-1.5 rounded-2xl mb-6 border border-slate-800">
-            <button onclick="mudarAba('login')" id="btnTabLogin" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 bg-sky-500 text-slate-950 shadow-md">
-                Entrar
-            </button>
-            <button onclick="mudarAba('registro')" id="btnTabRegistro" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 text-slate-400 hover:text-white">
-                Teste Grátis
-            </button>
-        </div>
-
-        <!-- FORMULÁRIO DE LOGIN -->
-        <div id="formLogin">
-            {% if erro_login %}
-            <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl mb-4 text-center">
-                <i class="fa-solid fa-circle-exclamation mr-1"></i> {{ erro_login }}
-            </div>
-            {% endif %}
-
-            <form action="/login" method="POST" class="space-y-4">
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Conta / E-mail</label>
-                    <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Palavra-passe</label>
-                    <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
-                </div>
-                <button type="submit" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3.5 rounded-xl transition duration-200 shadow-lg shadow-sky-500/20 text-sm mt-2">
-                    Aceder ao Sistema
-                </button>
-            </form>
-        </div>
-
-        <!-- FORMULÁRIO DE REGISTO (TESTE GRÁTIS COM CPF) -->
-        <div id="formRegistro" class="hidden">
-            {% if erro_reg %}
-            <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl mb-4 text-center">
-                <i class="fa-solid fa-circle-exclamation mr-1"></i> {{ erro_reg }}
-            </div>
-            {% endif %}
-
-            <form action="/registrar" method="POST" class="space-y-4">
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Definir Conta / E-mail</label>
-                    <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">CPF (Registo Único)</label>
-                    <input type="text" name="cpf" id="cpf" required placeholder="000.000.000-00" maxlength="14" oninput="mascaraCpf(this)" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Criar Senha</label>
-                    <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
-                </div>
-                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl transition duration-200 shadow-lg shadow-emerald-500/20 text-sm mt-2">
-                    Resgatar Teste Grátis
-                </button>
-            </form>
-        </div>
-
-    </div>
-
-    <script>
-        function mudarAba(aba) {
-            let fLogin = document.getElementById('formLogin');
-            let fReg = document.getElementById('formRegistro');
-            let bLogin = document.getElementById('btnTabLogin');
-            let bReg = document.getElementById('btnTabRegistro');
-
-            if(aba === 'login') {
-                fLogin.classList.remove('hidden');
-                fReg.classList.add('hidden');
-                bLogin.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 bg-sky-500 text-slate-950 shadow-md";
-                bReg.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 text-slate-400 hover:text-white";
-            } else {
-                fLogin.classList.add('hidden');
-                fReg.classList.remove('hidden');
-                bReg.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 bg-emerald-500 text-slate-950 shadow-md";
-                bLogin.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 text-slate-400 hover:text-white";
-            }
+    if file:
+        input_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(input_path)
+        
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(input_path)
+        else:
+            df = pd.read_excel(input_path)
+            
+        total_linhas = len(df)
+        
+        # Isenção total para administrador
+        if session.get('usuario') == "cachorrofrito7@gmail.com":
+            valor_total = 0.00
+        else:
+            if total_linhas <= 5000:
+                preco = 0.20
+            elif total_linhas <= 10000:
+                preco = 0.15
+            else:
+                preco = 0.10
+            valor_total = max(10.00, float(total_linhas * preco))
+        
+        session['filename_pendente'] = file.filename
+        session['total_linhas'] = total_linhas
+        session['valor_total'] = f"{valor_total:.2f}"
+        
+        payment_id = "manual_pix"
+        qr_code_gerado = None
+        
+        if valor_total == 0.00:
+            session['pago'] = True
+            return redirect(url_for('tela_download'))
+        
+        headers = {
+            "Authorization": f"Bearer {ACCESS_TOKEN_MP}",
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": str(uuid.uuid4())
         }
-
-        function mascaraCpf(i) {
-            let v = i.value;
-            if(isNaN(v[v.length-1])) {
-                i.value = v.substring(0, v.length-1);
-                return;
-            }
-            i.setAttribute("maxlength", "14");
-            if (v.length == 3 || v.length == 7) i.value += ".";
-            if (v.length == 11) i.value += "-";
+        
+        payment_data = {
+            "transaction_amount": float(valor_total),
+            "description": f"Higienização de {total_linhas} leads - DataCleaner",
+            "payment_method_id": "pix",
+            "payer": {"email": session['usuario']}
         }
-    </script>
-</body>
-</html>
+        
+        try:
+            resp = requests.post("https://api.mercadopago.com/v1/payments", json=payment_data, headers=headers, timeout=10)
+            if resp.status_code == 201:
+                p_json = resp.json()
+                payment_id = p_json.get("id")
+                t_data = p_json.get("point_of_interaction", {}).get("transaction_data", {})
+                qr_code_gerado = t_data.get("qr_code")
+        except:
+            pass
+            
+        if not qr_code_gerado:
+            qr_code_gerado = gerar_payload_pix(MINHA_CHAVE_PIX, "DataCleaner", "Sao Paulo", valor_total)
+            
+        session['payment_id'] = payment_id
+        session['qr_code'] = qr_code_gerado
+        
+        return redirect(url_for('tela_pagamento'))
+
+@app.route('/pagamento')
+def tela_pagamento():
+    if 'usuario' not in session or 'filename_pendente' not in session:
+        return redirect(url_for('painel'))
+    return render_template('pagamento.html', filename=session['filename_pendente'], total_linhas=session['total_linhas'], valor_total=session['valor_total'], qr_code=session.get('qr_code', ''))
+
+@app.route('/verificar_pagamento', methods=['GET'])
+def verificar_pagamento():
+    if 'usuario' not in session:
+        return redirect(url_for('index'))
+    payment_id = session.get('payment_id')
+    if payment_id == "manual_pix":
+        session['pago'] = True
+        return redirect(url_for('tela_download'))
+        
+    headers = {"Authorization": f"Bearer {ACCESS_TOKEN_MP}"}
+    try:
+        resp = requests.get(f"https://api.mercadopago.com/v1/payments/{payment_id}", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            if resp.json().get("status") == "approved":
+                session['pago'] = True
+                return redirect(url_for('tela_download'))
+    except:
+        pass
+    return render_template('aguardando_pagamento.html', filename=session.get('filename_pendente'), valor_total=session.get('valor_total'), aviso="O Pix ainda não foi compensado.")
+
+@app.route('/download_liberado')
+def tela_download():
+    if not session.get('pago') or 'filename_pendente' not in session:
+        return redirect(url_for('painel'))
+    return render_template('download.html', filename=session['filename_pendente'])
+
+@app.route('/processar_e_baixar', methods=['POST'])
+def processar_e_baixar():
+    if not session.get('pago') or 'filename_pendente' not in session:
+        return "Acesso negado. O pagamento é obrigatório.", 403
+        
+    filename = session['filename_pendente']
+    input_path = os.path.join(UPLOAD_FOLDER, filename)
+    
+    if not os.path.exists(input_path):
+        return "Ficheiro expirado", 404
+        
+    if filename.endswith('.csv'):
+        df = pd.read_csv(input_path)
+    else:
+        df = pd.read_excel(input_path)
+        
+    for col in df.columns:
+        col_lower = col.lower()
+        if 'nome' in col_lower:
+            df[col] = df[col].apply(limpar_nome)
+        elif 'email' in col_lower or 'e-mail' in col_lower:
+            df[col] = df[col].apply(limpar_email)
+        elif 'tel' in col_lower or 'cel' in col_lower or 'fone' in col_lower or 'whatsapp' in col_lower:
+            df[col] = df[col].apply(limpar_telefone)
+            
+    df = df.drop_duplicates()
+    
+    coluna_nome = next((c for c in df.columns if 'nome' in c.lower()), None)
+    if coluna_nome:
+        df = df.sort_values(by=coluna_nome, ascending=True)
+    
+    output_filename = "limpo_" + filename
+    output_path = os.path.join(UPLOAD_FOLDER, output_filename)
+    
+    if output_filename.endswith('.csv'):
+        df.to_csv(output_path, index=False, encoding='utf-8-sig')
+    else:
+        df.to_excel(output_path, index=False)
+    
+    response = send_file(output_path, as_attachment=True)
+    
+    @response.call_on_close
+    def limpar_tudo():
+        try:
+            if os.path.exists(input_path): os.remove(input_path)
+            if os.path.exists(output_path): os.remove(output_path)
+            session.clear()
+        except:
+            pass
+
+    return response
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
