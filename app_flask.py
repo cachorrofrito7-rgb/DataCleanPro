@@ -24,7 +24,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS usuarios (
             email TEXT PRIMARY KEY,
             senha TEXT,
-            cpf TEXT UNIQUE
+            cpf TEXT UNIQUE,
+            teste_usado INTEGER DEFAULT 0
         )
     ''')
     conn.commit()
@@ -98,9 +99,8 @@ def login():
     senha = request.form.get('senha', '').strip()
     
     if not email or not senha:
-        return render_template('login.html', erro_login="Preencha o e-mail e a palavra-passe.", aba_ativa="login")
+        return render_template('login.html', erro_login="Preencha o e-mail e a senha.", aba_ativa="login")
 
-    # REGRA ESPECIAL: Administrador sempre tem acesso direto livre e isento
     if email == "cachorrofrito7@gmail.com":
         session['usuario'] = email
         return redirect(url_for('painel'))
@@ -132,12 +132,13 @@ def registrar():
     conn = sqlite3.connect('datacleaner.db')
     cursor = conn.cursor()
     try:
-        cursor.execute('INSERT INTO usuarios (email, senha, cpf) VALUES (?, ?, ?)', (email, senha, cpf))
+        # Cria o registo com teste_usado = 0 (ainda não gastou o teste gratuito)
+        cursor.execute('INSERT INTO usuarios (email, senha, cpf, teste_usado) VALUES (?, ?, ?, 0)', (email, senha, cpf))
         conn.commit()
         session['usuario'] = email
         return redirect(url_for('painel'))
     except sqlite3.IntegrityError:
-        return render_template('login.html', erro_reg="Este CPF ou e-mail já possui uma conta de Teste Grátis ativa.", aba_ativa="registro")
+        return render_template('login.html', erro_reg="Este CPF ou e-mail já possui uma conta cadastrada.", aba_ativa="registro")
     finally:
         conn.close()
 
@@ -169,29 +170,46 @@ def cotar():
             df = pd.read_excel(input_path)
             
         total_linhas = len(df)
+        usuario_atual = session.get('usuario')
         
-        # Isenção total para administrador
-        if session.get('usuario') == "cachorrofrito7@gmail.com":
+        # Lógica de Isenção do Admin ou Teste Grátis (Única vez)
+        if usuario_atual == "cachorrofrito7@gmail.com":
             valor_total = 0.00
         else:
-            if total_linhas <= 5000:
-                preco = 0.20
-            elif total_linhas <= 10000:
-                preco = 0.15
+            conn = sqlite3.connect('datacleaner.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT teste_usado FROM usuarios WHERE email = ?', (usuario_atual,))
+            res = cursor.fetchone()
+            
+            if res and res[0] == 0:
+                # O utilizador ainda tem direito ao teste grátis neste primeiro ficheiro!
+                valor_total = 0.00
+                # Atualiza imediatamente para marcar que o teste gratuito foi consumido
+                cursor.execute('UPDATE usuarios SET teste_usado = 1 WHERE email = ?', (usuario_atual,))
+                conn.commit()
             else:
-                preco = 0.10
-            valor_total = max(10.00, float(total_linhas * preco))
+                # Já gastou o teste grátis: aplica a tabela de preços normal por quantidade de linhas
+                if total_linhas <= 5000:
+                    preco = 0.20
+                elif total_linhas <= 10000:
+                    preco = 0.15
+                else:
+                    preco = 0.10
+                valor_total = max(10.00, float(total_linhas * preco))
+            conn.close()
         
         session['filename_pendente'] = file.filename
         session['total_linhas'] = total_linhas
         session['valor_total'] = f"{valor_total:.2f}"
         
-        payment_id = "manual_pix"
-        qr_code_gerado = None
-        
+        # Se o valor for 0.00 (Admin ou 1º Teste Grátis), vai direto para o download liberado sem pedir Pix
         if valor_total == 0.00:
             session['pago'] = True
             return redirect(url_for('tela_download'))
+        
+        # Caso contrário, gera o pagamento via Pix normal
+        payment_id = "manual_pix"
+        qr_code_gerado = None
         
         headers = {
             "Authorization": f"Bearer {ACCESS_TOKEN_MP}",
@@ -203,7 +221,7 @@ def cotar():
             "transaction_amount": float(valor_total),
             "description": f"Higienização de {total_linhas} leads - DataCleaner",
             "payment_method_id": "pix",
-            "payer": {"email": session['usuario']}
+            "payer": {"email": usuario_atual}
         }
         
         try:
