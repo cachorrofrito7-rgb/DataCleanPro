@@ -1,5 +1,6 @@
-from flask import Flask, render_template_string, request, send_file, redirect, url_for, session
+from flask import Flask, render_template_string, request, send_file, redirect, url_for, session, flash
 from datetime import timedelta
+from functools import wraps
 import pandas as pd
 import re
 import os
@@ -17,6 +18,9 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ACCESS_TOKEN_MP = "APP_USR-7867386358048993-100810-4465684464772bfe6f520899f45e0b59-725141812"
 MINHA_CHAVE_PIX = "e32c6a95-8ef0-471f-ae7a-4072a635be4e"
 
+# E-mail que terá acesso ao Painel Admin
+ADMIN_EMAIL = "cachorrofrito7@gmail.com"
+
 def init_db():
     conn = sqlite3.connect('datacleaner.db')
     cursor = conn.cursor()
@@ -25,13 +29,32 @@ def init_db():
             email TEXT PRIMARY KEY,
             senha TEXT,
             cpf TEXT UNIQUE,
-            teste_usado INTEGER DEFAULT 0
+            teste_usado INTEGER DEFAULT 0,
+            is_vip INTEGER DEFAULT 0
+        )
+    ''')
+    # Tabela opcional para contar logs/processamentos se já existir
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usage_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
     conn.close()
 
 init_db()
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_email = session.get('usuario')
+        if not user_email or user_email.lower() != ADMIN_EMAIL.lower():
+            flash("Acesso restrito ao administrador.", "danger")
+            return redirect(url_for('painel'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def limpar_nome(nome):
     if pd.isna(nome): return ""
@@ -87,12 +110,89 @@ def gerar_payload_pix(chave, nome, cidade, valor):
 def tornar_sessao_permanente():
     session.permanent = True
 
-# ROTA DE VERIFICAÇÃO DO GOOGLE SEARCH CONSOLE
 @app.route('/googled2b6467c03a7583c.html')
 def google_verification():
     return "google-site-verification: googled2b6467c03a7583c.html"
 
-# 1. PÁGINA DE BOAS-VINDAS OTIMIZADA PARA SEO
+# HTML DO PAINEL DE CONTROLE ADMINISTRATIVO
+HTML_ADMIN = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - DataCleaner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8 min-h-screen">
+    <div class="max-w-5xl mx-auto">
+        <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+            <h1 class="text-2xl font-bold text-sky-400">📊 Painel Administrativo</h1>
+            <a href="/painel" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-semibold transition">← Voltar ao Painel</a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center">
+                <span class="text-xs uppercase text-slate-400 font-semibold">Total de Utilizadores</span>
+                <p class="text-3xl font-extrabold text-white mt-2">{{ total_users }}</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center">
+                <span class="text-xs uppercase text-slate-400 font-semibold">Ficheiros Processados</span>
+                <p class="text-3xl font-extrabold text-sky-400 mt-2">{{ total_cleanings }}</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center">
+                <span class="text-xs uppercase text-slate-400 font-semibold">Utilizadores VIP</span>
+                <p class="text-3xl font-extrabold text-emerald-400 mt-2">{{ total_vip }}</p>
+            </div>
+        </div>
+
+        <h2 class="text-lg font-bold text-slate-200 mb-4">Lista de Utilizadores Registados</h2>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-800 text-slate-400 uppercase text-xs">
+                    <tr>
+                        <th class="p-4">E-mail</th>
+                        <th class="p-4">CPF</th>
+                        <th class="p-4">Status / Plano</th>
+                        <th class="p-4 text-center">Ação VIP (Parceiro)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800">
+                    {% for user in users %}
+                    <tr class="hover:bg-slate-800/50">
+                        <td class="p-4 font-medium text-slate-200">{{ user[0] }}</td>
+                        <td class="p-4 text-slate-400">{{ user[2] }}</td>
+                        <td class="p-4">
+                            {% if user[4] == 1 or user[0] == 'cachorrofrito7@gmail.com' %}
+                                <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs px-3 py-1 rounded-full font-semibold">VIP / Ilimitado</span>
+                            {% else %}
+                                <span class="bg-slate-800 text-slate-400 text-xs px-3 py-1 rounded-full">Gratuito</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 text-center">
+                            {% if user[0] != 'cachorrofrito7@gmail.com' %}
+                            <form action="/admin/toggle-vip" method="POST" class="inline">
+                                <input type="hidden" name="email_alvo" value="{{ user[0] }}">
+                                {% if user[4] == 1 %}
+                                    <button type="submit" class="bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 text-xs px-3 py-1 rounded-lg font-semibold transition">Remover VIP</button>
+                                {% else %}
+                                    <button type="submit" class="bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20 text-xs px-3 py-1 rounded-lg font-semibold transition">Tornar VIP</button>
+                                {% endif %}
+                            </form>
+                            {% else %}
+                            <span class="text-xs text-slate-500">Admin Master</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
 HTML_INDEX = """
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -100,13 +200,10 @@ HTML_INDEX = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DataCleaner Pro - Higienização e Ordenação Inteligente de Leads</title>
-    <meta name="description" content="Automatize a limpeza de bases de dados, correção ortográfica de nomes, formatação de telefones, e-mails e ordenação alfabética de leads em CSV e Excel em segundos.">
-    <meta name="keywords" content="limpar base de leads, higienizar excel, formatar telefones planilha, organizador de leads, data cleaner">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>.glass-card { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-slate-950">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
     <header class="w-full border-b border-slate-900 bg-slate-950/80 sticky top-0 z-50 backdrop-blur">
         <div class="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -121,11 +218,8 @@ HTML_INDEX = """
             </div>
         </div>
     </header>
-    <main class="max-w-6xl mx-auto px-6 py-16 flex-1">
-        <div class="text-center max-w-3xl mx-auto mb-16">
-            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold mb-6">
-                <i class="fa-solid fa-bolt"></i> Motor de Limpeza v3.0 Otimizado para Alta Performance
-            </div>
+    <main class="max-w-6xl mx-auto px-6 py-16 flex-1 text-center">
+        <div class="max-w-3xl mx-auto mb-16">
             <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
                 Transforme bases de dados sujas em <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">Leads Prontos para Vendas</span>
             </h1>
@@ -144,7 +238,6 @@ HTML_INDEX = """
 </html>
 """
 
-# 2. PÁGINA DE LOGIN / TESTE GRÁTIS
 HTML_LOGIN = """
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -153,16 +246,14 @@ HTML_LOGIN = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acesso - DataCleaner Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>.glass-card { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
 </head>
 <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen relative overflow-hidden">
-    <div class="glass-card p-8 rounded-3xl shadow-2xl max-w-md w-full relative z-10 mx-4">
+    <div class="bg-slate-900/80 border border-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full relative z-10 mx-4">
         <div class="text-center mb-6">
             <a href="/" class="text-xs text-sky-400 hover:underline mb-2 block">← Voltar à página inicial</a>
             <h1 class="text-2xl font-extrabold text-white">DataCleaner <span class="text-sky-400">Pro</span></h1>
         </div>
-        <div class="flex bg-slate-900 p-1.5 rounded-2xl mb-6 border border-slate-800">
+        <div class="flex bg-slate-950 p-1.5 rounded-2xl mb-6 border border-slate-800">
             <button type="button" onclick="mudarAba('login')" id="btnTabLogin" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 bg-sky-500 text-slate-950 shadow-md">Entrar</button>
             <button type="button" onclick="mudarAba('registro')" id="btnTabRegistro" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition duration-200 text-slate-400 hover:text-white">Teste Grátis</button>
         </div>
@@ -173,11 +264,11 @@ HTML_LOGIN = """
             <form action="/login" method="POST" class="space-y-4">
                 <div>
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">E-mail</label>
-                    <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                    <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Senha</label>
-                    <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                    <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
                 </div>
                 <button type="submit" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3.5 rounded-xl transition text-sm mt-2">Aceder ao Sistema</button>
             </form>
@@ -189,7 +280,102 @@ HTML_LOGIN = """
             <form action="/registrar" method="POST" class="space-y-4">
                 <div>
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">E-mail</label>
-                    <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                    <input type="email" name="email" required placeholder="seu@email.com" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">CPF (Registo Único)</label>
+                    <input type="text" name="cpf" id="cpf" required placeholder="000.000.000-00" maxlength="14" oninput="mascaraCpf(this)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">Criar Senha</label>
+                    <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl transition text-sm mt-2">Resgatar Teste Grátis</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        function mudarAba(aba) {
+            let fLogin = document.getElementById('formLogin');
+            let fReg = document.getElementById('formRegistro');
+            let bLogin = document.getElementById('btnTabLogin');
+            let bReg = document.getElementById('btnTabRegistro');
+            if(aba === 'login') {
+                fLogin.classList.remove('hidden'); fReg.classList.add('hidden');
+                bLogin.className = "flex-1 py-2.5 text-xs font-bold rounded-xl bg-sky-500 text-slate-950 shadow-md";
+                bReg.className = "flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-400 hover:text-white";
+            } else {
+                fLogin.classList.add('hidden'); fReg.classList.remove('hidden');
+                bReg.className = "flex-1 py-2.5 text-xs font-bold rounded-xl bg-emerald-500 text-slate-950 shadow-md";
+                bLogin.className = "flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-400 hover:text-white";
+            }
+        }
+        {% if aba_ativa == 'registro' %} mudarAba('registro'); {% endif %}
+        function mascaraCpf(i) {
+            let v = i.value;
+            if(isNaN(v[v.length-1])) { i.value = v.substring(0, v.length-1); return; }
+            i.setAttribute("maxlength", "14");
+            if (v.length == 3 || v.length == 7) i.value += ".";
+            if (v.length == 11) i.value += "-";
+        }
+    </script>
+</body>
+</html>
+"""
+
+HTML_PAINEL = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - DataCleaner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full">
+        <div class="flex justify-between items-center mb-6">
+            <span class="text-xs font-semibold text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">{{ email }}</span>
+            <div class="flex items-center gap-3">
+                {% if email.lower() == 'cachorrofrito7@gmail.com' %}
+                <a href="/admin" class="text-xs font-bold text-sky-400 bg-sky-500/10 border border-sky-500/30 px-3 py-1 rounded-full hover:bg-sky-500/20 transition">Painel Admin</a>
+                {% endif %}
+                <a href="/logout" class="text-xs text-rose-400 hover:text-rose-300 transition">Terminar Sessão</a>
+            </div>
+        </div>
+        <h2 class="text-2xl font-bold text-sky-400 mb-1">Carregar Ficheiro</h2>
+        <p class="text-slate-400 text-sm mb-6">Envie o seu ficheiro CSV ou Excel para limpeza automática e ordenação.</p>
+        <form action="/cotar" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <label class="border-2 border-dashed border-slate-700 hover:border-sky-500 bg-slate-800/50 hover:bg-slate-800 p-8 rounded-2xl cursor-pointer flex flex-col items-center justify-center transition duration-200 block">
+                <span class="text-3xl mb-2">📂</span>
+                <span class="text-sm font-semibold text-slate-200">Clique para selecionar ficheiro</span>
+                <span class="text-xs text-slate-500 mt-1">.csv ou .xlsx</span>
+                <input type="file" name="file" accept=".csv, .xlsx" required class="hidden" onchange="this.form.submit()">
+            </label>
+        </form>
+    </div>
+</body>
+</html>
+"""
+
+HTML_PAGAMENTO = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento Pix - DataCleaner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+        <h2 class="text-2xl font-bold text-sky-400 mb-1">Finalizar Pagamento Pix</h2>
+        <p class="text-slate-400 text-sm mb-4">Ficheiro: <span class="text-slate-200 font-semibold">{{ filename }}</span></p>
+        <div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs py-2 px-4 rounded-xl mb-4 font-semibold">
+            ⏳ Expira em: <span id="countdown">05:00</span>
+        </div>
+        <div class="bg-slate-800 p-4 rounded-xl mb-6 border border-slar border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">CPF (Registo Único)</label>
