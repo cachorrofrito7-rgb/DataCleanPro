@@ -145,7 +145,7 @@ HTML_ADMIN = """
                 <p class="text-4xl font-black text-white mt-2">{{ total_users }}</p>
             </div>
             <div class="bg-slate-900/60 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl">
-                <span class="text-xs uppercase text-slate-400 font-bold tracking-wider">Ficheiros Higienizados</span>
+                <span class="text-xs uppercase text-slate-400 font-bold tracking-wider">Arquivos Higienizados</span>
                 <p class="text-4xl font-black text-sky-400 mt-2">{{ total_cleanings }}</p>
             </div>
             <div class="bg-slate-900/60 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl">
@@ -180,7 +180,7 @@ HTML_ADMIN = """
                                     </span>
                                 {% else %}
                                     <span class="inline-flex items-center gap-1.5 bg-slate-800 text-slate-400 text-xs px-3 py-1 rounded-full font-medium">
-                                        Gratuito (1º Ficheiro Grátis)
+                                        Gratuito (1º Arquivo Grátis)
                                     </span>
                                 {% endif %}
                             </td>
@@ -237,7 +237,7 @@ HTML_INDEX = """
     <main class="max-w-6xl mx-auto px-6 py-20 flex-1 text-center">
         <div class="max-w-3xl mx-auto mb-16">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-bold mb-6">
-                <i class="fa-solid fa-bolt"></i> O primeiro ficheiro higienizado é totalmente grátis!
+                <i class="fa-solid fa-bolt"></i> O primeiro arquivo higienizado é totalmente grátis!
             </div>
             <h1 class="text-4xl sm:text-6xl font-black tracking-tight text-white mb-6 leading-[1.1]">
                 Transforme bases de dados sujas em <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">Leads Prontos para Vendas</span>
@@ -246,7 +246,7 @@ HTML_INDEX = """
                 Automatize a correção ortográfica de nomes, formatação correta de telemóveis/telefones com DDD, normalização de e-mails, eliminação de duplicados e ordenação alfabética de planilhas CSV e Excel em segundos.
             </p>
             <a href="/auth?modo=registro" class="inline-flex items-center gap-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-slate-950 font-black px-8 py-4 rounded-2xl shadow-xl shadow-sky-500/25 transition">
-                <i class="fa-solid fa-rocket"></i> Começar Teste Grátis Agora (1º Ficheiro Grátis)
+                <i class="fa-solid fa-rocket"></i> Começar Teste Grátis Agora (1º arquivo Grátis)
             </a>
         </div>
     </main>
@@ -257,7 +257,7 @@ HTML_INDEX = """
 </html>
 """
 
-# TELA DE AUTENTICAÇÃO UNIFICADA (LOGIN E CADASTRO / REGISTO) COM 1º FICHEIRO GRÁTIS
+# TELA DE AUTENTICAÇÃO UNIFICADA (LOGIN E CADASTRO / REGISTO) COM 1º Arquivo GRÁTIS
 HTML_AUTH = """
 <!DOCTYPE html>
 <html lang="pt">
@@ -384,7 +384,7 @@ HTML_PAINEL = """
         </div>
         
         <div id="uploadCard">
-            <h2 class="text-2xl font-black text-white mb-2 tracking-tight">Carregar Ficheiro</h2>
+            <h2 class="text-2xl font-black text-white mb-2 tracking-tight">Carregar arquivo</h2>
             <p class="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed">Envie o seu ficheiro CSV ou Excel para limpeza automática de nomes, telemóveis e duplicados.</p>
             <form action="/cotar" method="POST" enctype="multipart/form-data" onsubmit="mostrarLoader()">
                 <label class="border-2 border-dashed border-slate-700 hover:border-sky-500 bg-slate-950/50 hover:bg-slate-950 p-8 rounded-2xl cursor-pointer flex flex-col items-center justify-center transition duration-200 block text-center group">
@@ -400,7 +400,7 @@ HTML_PAINEL = """
 
         <div id="loadingCard" class="hidden text-center py-12">
             <div class="inline-block w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h3 class="text-lg font-black text-white mb-1">A processar o seu ficheiro...</h3>
+            <h3 class="text-lg font-black text-white mb-1">A processar o seu arquivo...</h3>
             <p class="text-slate-400 text-xs">O motor está a higienizar dados e a formatar telemóveis.</p>
         </div>
     </div>
