@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, send_file, redirect, url_for, session, flash
+from flask import Flask, render_template_string, request, send_file, redirect, url_for, session, flash, jsonify
 from datetime import timedelta
 from functools import wraps
 import pandas as pd
@@ -237,7 +237,7 @@ HTML_INDEX = """
     <main class="max-w-6xl mx-auto px-6 py-20 flex-1 text-center">
         <div class="max-w-3xl mx-auto mb-16">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-bold mb-6">
-                <i class="fa-solid fa-bolt"></i> O primeiro arquivo higienizado é totalmente grátis!
+                <i class="fa-solid fa-bolt"></i> O primeiro arquivo higienizado é totalmente grátis! Apenas R$ 0,20 por lead nos demais.
             </div>
             <h1 class="text-4xl sm:text-6xl font-black tracking-tight text-white mb-6 leading-[1.1]">
                 Transforme bases de dados sujas em <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">Leads Prontos para Vendas</span>
@@ -246,7 +246,7 @@ HTML_INDEX = """
                 Automatize a correção ortográfica de nomes, formatação correta de telemóveis/telefones com DDD, normalização de e-mails, eliminação de duplicados e ordenação alfabética de planilhas CSV e Excel em segundos.
             </p>
             <a href="/auth?modo=registro" class="inline-flex items-center gap-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-slate-950 font-black px-8 py-4 rounded-2xl shadow-xl shadow-sky-500/25 transition">
-                <i class="fa-solid fa-rocket"></i> Começar Teste Grátis Agora (1º arquivo Grátis)
+                <i class="fa-solid fa-rocket"></i> Começar Teste Grátis Agora (1º Arquivo Grátis)
             </a>
         </div>
     </main>
@@ -257,7 +257,6 @@ HTML_INDEX = """
 </html>
 """
 
-# TELA DE AUTENTICAÇÃO UNIFICADA (LOGIN E CADASTRO / REGISTO) COM 1º Arquivo GRÁTIS
 HTML_AUTH = """
 <!DOCTYPE html>
 <html lang="pt">
@@ -274,7 +273,7 @@ HTML_AUTH = """
         <div class="text-center mb-6">
             <a href="/" class="text-xs text-sky-400 hover:text-sky-300 transition font-semibold mb-3 inline-block">← Voltar à página inicial</a>
             <h1 class="text-2xl font-black text-white tracking-tight">DataCleaner <span class="text-sky-400">Pro</span></h1>
-            <p class="text-xs text-slate-400 mt-1">Crie conta e processe o seu <strong class="text-emerald-400">primeiro ficheiro gratuitamente</strong>.</p>
+            <p class="text-xs text-slate-400 mt-1">Crie conta e processe o seu <strong class="text-emerald-400">primeiro arquivo gratuitamente</strong>.</p>
         </div>
         
         <div class="flex bg-slate-950 p-1.5 rounded-2xl mb-6 border border-slate-800/80 shadow-inner">
@@ -320,7 +319,7 @@ HTML_AUTH = """
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Criar Palavra-passe</label>
                     <input type="password" name="senha" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-4 py-3.5 focus:outline-none focus:border-sky-500 text-sm font-medium">
                 </div>
-                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 rounded-xl transition text-sm shadow-lg shadow-emerald-500/20 mt-2">Resgatar 1º Ficheiro Grátis</button>
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 rounded-xl transition text-sm shadow-lg shadow-emerald-500/20 mt-2">Resgatar 1º Arquivo Grátis</button>
             </form>
         </div>
     </div>
@@ -341,7 +340,6 @@ HTML_AUTH = """
             }
         }
         
-        // Verifica URL para abrir aba de registo se solicitado
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.get('modo') === 'registro') { mudarAba('registro'); }
         {% if aba_ativa == 'registro' %} mudarAba('registro'); {% endif %}
@@ -364,409 +362,4 @@ HTML_PAINEL = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel - DataCleaner Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>.glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
-</head>
-<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen font-sans antialiased">
-    <div class="glass p-8 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full relative mx-4 border border-slate-800">
-        <div class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800/80">
-            <span class="text-xs font-bold text-slate-300 bg-slate-950 px-3.5 py-1.5 rounded-xl border border-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-user text-sky-400"></i> {{ email }}
-            </span>
-            <div class="flex items-center gap-3">
-                {% if email.lower() == 'cachorrofrito7@gmail.com' %}
-                <a href="/admin" class="text-xs font-black text-sky-400 bg-sky-500/10 border border-sky-500/30 px-3 py-1.5 rounded-xl hover:bg-sky-500/25 transition">Admin</a>
-                {% endif %}
-                <a href="/logout" class="text-xs font-bold text-rose-400 hover:text-rose-300 transition px-2 py-1">Terminar Sessão</a>
-            </div>
-        </div>
-        
-        <div id="uploadCard">
-            <h2 class="text-2xl font-black text-white mb-2 tracking-tight">Carregar arquivo</h2>
-            <p class="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed">Envie o seu ficheiro CSV ou Excel para limpeza automática de nomes, telemóveis e duplicados.</p>
-            <form action="/cotar" method="POST" enctype="multipart/form-data" onsubmit="mostrarLoader()">
-                <label class="border-2 border-dashed border-slate-700 hover:border-sky-500 bg-slate-950/50 hover:bg-slate-950 p-8 rounded-2xl cursor-pointer flex flex-col items-center justify-center transition duration-200 block text-center group">
-                    <div class="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-xl mb-3 group-hover:scale-110 transition">
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                    </div>
-                    <span class="text-sm font-bold text-slate-200 mb-1">Clique para selecionar ficheiro</span>
-                    <span class="text-xs text-slate-500 font-medium">Suporta .csv ou .xlsx</span>
-                    <input type="file" name="file" accept=".csv, .xlsx" required class="hidden" onchange="this.form.submit()">
-                </label>
-            </form>
-        </div>
-
-        <div id="loadingCard" class="hidden text-center py-12">
-            <div class="inline-block w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h3 class="text-lg font-black text-white mb-1">A processar o seu arquivo...</h3>
-            <p class="text-slate-400 text-xs">O motor está a higienizar dados e a formatar telemóveis.</p>
-        </div>
-    </div>
-    <script>
-        function mostrarLoader() {
-            document.getElementById('uploadCard').classList.add('hidden');
-            document.getElementById('loadingCard').classList.remove('hidden');
-        }
-    </script>
-</body>
-</html>
-"""
-
-HTML_PAGAMENTO = """
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagamento Pix - DataCleaner Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>.glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
-</head>
-<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen font-sans antialiased">
-    <div class="glass p-8 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full text-center border border-slate-800 mx-4">
-        <h2 class="text-2xl font-black text-white mb-1 tracking-tight">Finalizar Pagamento Pix</h2>
-        <p class="text-slate-400 text-xs sm:text-sm mb-4">Ficheiro: <span class="text-slate-200 font-bold">{{ filename }}</span></p>
-        <div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs py-2.5 px-4 rounded-xl mb-6 font-bold flex items-center justify-center gap-2">
-            <i class="fa-solid fa-clock"></i> Expira em: <span id="countdown">05:00</span>
-        </div>
-        <div class="bg-slate-950 p-5 rounded-2xl mb-6 border border-slate-800/80 shadow-inner">
-            <span class="text-xs uppercase tracking-wider text-slate-400 font-bold">Total a Pagar</span>
-            <div class="text-3xl font-black text-emerald-400 mt-1">R$ {{ valor_total }}</div>
-        </div>
-        <div class="bg-white p-4 rounded-2xl inline-block mb-6 shadow-xl border border-slate-200"><div id="qrcode"></div></div>
-        <input type="text" id="pixCode" value="{{ qr_code }}" readonly class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-xl p-3.5 mb-4 select-all font-mono">
-        <button onclick="copiarPix()" id="btnCopiar" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-3.5 rounded-xl transition mb-3 shadow-lg shadow-sky-500/25 text-sm">📋 Copiar Código Pix</button>
-        <a href="/verificar_pagamento" class="block w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl transition text-center text-sm shadow-lg shadow-emerald-600/20">🔄 Já fiz o Pix / Verificar</a>
-    </div>
-    <script>
-        if("{{ qr_code }}") { new QRCode(document.getElementById("qrcode"), { text: "{{ qr_code }}", width: 180, height: 180 }); }
-        let t = 300;
-        let timer = setInterval(() => {
-            let m = Math.floor(t / 60), s = t % 60;
-            document.getElementById("countdown").textContent = (m<10?"0"+m:m) + ":" + (s<10?"0"+s:s);
-            if(t <= 0) { clearInterval(timer); window.location.href = "/painel"; }
-            t--;
-        }, 1000);
-        function copiarPix() {
-            let c = document.getElementById("pixCode"); c.select(); navigator.clipboard.writeText(c.value);
-            let b = document.getElementById("btnCopiar"); b.innerText = "✅ Copiado!"; setTimeout(() => b.innerText = "📋 Copiar Código Pix", 3000);
-        }
-    </script>
-</body>
-</html>
-"""
-
-HTML_AGUARDANDO = """
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-    <meta charset="UTF-8"><title>Aguardando - DataCleaner Pro</title><script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>.glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
-</head>
-<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen font-sans antialiased">
-    <div class="glass p-8 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full text-center border border-slate-800 mx-4">
-        <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl mx-auto mb-4">
-            <i class="fa-solid fa-spinner animate-spin"></i>
-        </div>
-        <h2 class="text-2xl font-black text-amber-400 mb-2 tracking-tight">Aguardando Compensação</h2>
-        <p class="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed">{{ aviso }}</p>
-        <a href="/verificar_pagamento" class="block w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-3.5 rounded-xl transition mb-3 text-center text-sm shadow-lg shadow-sky-500/20">🔄 Verificar Novamente</a>
-        <a href="/pagamento" class="block text-xs font-bold text-slate-400 hover:text-white transition">← Voltar ao QR Code</a>
-    </div>
-</body>
-</html>
-"""
-
-HTML_DOWNLOAD = """
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-    <meta charset="UTF-8"><title>Download - DataCleaner Pro</title><script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>.glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
-</head>
-<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen font-sans antialiased">
-    <div class="glass p-8 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full text-center border border-slate-800 mx-4">
-        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl mx-auto mb-4 shadow-lg shadow-emerald-500/10">
-            <i class="fa-solid fa-circle-check"></i>
-        </div>
-        <h2 class="text-2xl font-black text-emerald-400 mb-2 tracking-tight">Liberado com Sucesso!</h2>
-        <p class="text-slate-400 text-xs sm:text-sm mb-8 leading-relaxed">Ficheiro limpo, sem duplicados e ordenado alfabeticamente.</p>
-        <form action="/processar_e_baixar" method="POST">
-            <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 rounded-xl transition mb-4 shadow-xl shadow-emerald-500/25 text-sm flex items-center justify-center gap-2">
-                <i class="fa-solid fa-download"></i> Baixar Ficheiro Agora
-            </button>
-        </form>
-        <a href="/painel" class="block text-xs font-bold text-slate-400 hover:text-slate-200 transition">Processar outro ficheiro</a>
-    </div>
-</body>
-</html>
-"""
-
-# ==========================================
-# ROTAS DO FLASK
-# ==========================================
-
-@app.route('/')
-def index():
-    if 'usuario' in session:
-        return redirect(url_for('painel'))
-    return render_template_string(HTML_INDEX)
-
-@app.route('/auth')
-def auth_view():
-    if 'usuario' in session:
-        return redirect(url_for('painel'))
-    return render_template_string(HTML_AUTH)
-
-@app.route('/login', methods=['POST'])
-def login():
-    email = request.form.get('email', '').strip().lower()
-    senha = request.form.get('senha', '').strip()
-    if not email or not senha:
-        return render_template_string(HTML_AUTH, erro_login="Preencha o e-mail e a palavra-passe.", aba_ativa="login")
-
-    if email == ADMIN_EMAIL:
-        session['usuario'] = email
-        return redirect(url_for('painel'))
-
-    conn = sqlite3.connect('datacleaner.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM usuarios WHERE email = ? AND senha = ?', (email, senha))
-    user = cursor.fetchone()
-    conn.close()
-
-    if user:
-        session['usuario'] = email
-        return redirect(url_for('painel'))
-    
-    return render_template_string(HTML_AUTH, erro_login="Credenciais inválidas ou conta não encontrada.", aba_ativa="login")
-
-@app.route('/registrar', methods=['POST'])
-def registrar():
-    email = request.form.get('email', '').strip().lower()
-    senha = request.form.get('senha', '').strip()
-    cpf = re.sub(r'\D', '', request.form.get('cpf', ''))
-
-    if not email or not senha or not cpf:
-        return render_template_string(HTML_AUTH, erro_reg="Preencha todos os campos obrigatórios.", aba_ativa="registro")
-    if len(cpf) != 11:
-        return render_template_string(HTML_AUTH, erro_reg="CPF inválido (deve conter 11 dígitos).", aba_ativa="registro")
-
-    conn = sqlite3.connect('datacleaner.db')
-    cursor = conn.cursor()
-    try:
-        cursor.execute('INSERT INTO usuarios (email, senha, cpf, teste_usado, is_vip) VALUES (?, ?, ?, 0, 0)', (email, senha, cpf))
-        conn.commit()
-        session['usuario'] = email
-        return redirect(url_for('painel'))
-    except sqlite3.IntegrityError:
-        return render_template_string(HTML_AUTH, erro_reg="Este CPF ou e-mail já possui uma conta registada.", aba_ativa="registro")
-    finally:
-        conn.close()
-
-@app.route('/painel')
-def painel():
-    if 'usuario' not in session:
-        return redirect(url_for('index'))
-    return render_template_string(HTML_PAINEL, email=session['usuario'])
-
-@app.route('/admin')
-@admin_required
-def admin_dashboard():
-    conn = sqlite3.connect('datacleaner.db')
-    cursor = conn.cursor()
-    
-    try:
-        total_users = cursor.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]
-    except:
-        total_users = 0
-
-    try:
-        total_cleanings = cursor.execute("SELECT COUNT(*) FROM usage_logs").fetchone()[0]
-    except:
-        total_cleanings = 0
-
-    try:
-        total_vip = cursor.execute("SELECT COUNT(*) FROM usuarios WHERE is_vip = 1").fetchone()[0]
-    except:
-        total_vip = 0
-
-    try:
-        users = cursor.execute("SELECT email, senha, cpf, teste_usado, is_vip FROM usuarios ORDER BY email DESC").fetchall()
-    except:
-        users = []
-
-    conn.close()
-    return render_template_string(HTML_ADMIN, total_users=total_users, total_cleanings=total_cleanings, total_vip=total_vip, users=users)
-
-@app.route('/admin/toggle-vip', methods=['POST'])
-@admin_required
-def admin_toggle_vip():
-    email_alvo = request.form.get('email_alvo')
-    if email_alvo and email_alvo.lower() != ADMIN_EMAIL.lower():
-        conn = sqlite3.connect('datacleaner.db')
-        cursor = conn.cursor()
-        user = cursor.execute("SELECT is_vip FROM usuarios WHERE email = ?", (email_alvo,)).fetchone()
-        if user:
-            novo_status = 0 if user[0] == 1 else 1
-            cursor.execute("UPDATE usuarios SET is_vip = ? WHERE email = ?", (novo_status, email_alvo))
-            conn.commit()
-        conn.close()
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/cotar', methods=['POST'])
-def cotar():
-    if 'usuario' not in session:
-        return redirect(url_for('index'))
-    if 'file' not in request.files:
-        return "Nenhum ficheiro enviado", 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return "Ficheiro não selecionado", 400
-
-    if file:
-        input_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(input_path)
-        
-        if file.filename.endswith('.csv'):
-            df = pd.read_csv(input_path)
-        else:
-            df = pd.read_excel(input_path)
-            
-        total_linhas = len(df)
-        usuario_atual = session.get('usuario')
-        
-        try:
-            conn_log = sqlite3.connect('datacleaner.db')
-            curr_log = conn_log.cursor()
-            curr_log.execute("INSERT INTO usage_logs (email) VALUES (?)", (usuario_atual,))
-            conn_log.commit()
-            conn_log.close()
-        except:
-            pass
-
-        conn = sqlite3.connect('datacleaner.db')
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT teste_usado, is_vip FROM usuarios WHERE email = ?', (usuario_atual,))
-        res = cursor.fetchone()
-        
-        is_vip = res[1] == 1 if res else False
-        teste_usado = res[0] == 1 if res else False
-
-        if usuario_atual == ADMIN_EMAIL or is_vip:
-            valor_total = 0.00
-        elif not teste_usado:
-            valor_total = 0.00
-            cursor.execute('UPDATE usuarios SET teste_usado = 1 WHERE email = ?', (usuario_atual,))
-            conn.commit()
-        else:
-            if total_linhas <= 5000: preco = 0.20
-            elif total_linhas <= 10000: preco = 0.15
-            else: preco = 0.10
-            valor_total = max(10.00, float(total_linhas * preco))
-        conn.close()
-        
-        session['filename_pendente'] = file.filename
-        session['total_linhas'] = total_linhas
-        session['valor_total'] = f"{valor_total:.2f}"
-        
-        if valor_total == 0.00:
-            session['pago'] = True
-            return redirect(url_for('tela_download'))
-        
-        payment_id = "manual_pix"
-        qr_code_gerado = None
-        headers = {"Authorization": f"Bearer {ACCESS_TOKEN_MP}", "Content-Type": "application/json", "X-Idempotency-Key": str(uuid.uuid4())}
-        payment_data = {"transaction_amount": float(valor_total), "description": f"Higienização de {total_linhas} leads", "payment_method_id": "pix", "payer": {"email": usuario_atual}}
-        
-        try:
-            resp = requests.post("https://api.mercadopago.com/v1/payments", json=payment_data, headers=headers, timeout=10)
-            if resp.status_code == 201:
-                p_json = resp.json()
-                payment_id = p_json.get("id")
-                qr_code_gerado = p_json.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code")
-        except:
-            pass
-            
-        if not qr_code_gerado:
-            qr_code_gerado = gerar_payload_pix(MINHA_CHAVE_PIX, "DataCleaner", "Sao Paulo", valor_total)
-            
-        session['payment_id'] = payment_id
-        session['qr_code'] = qr_code_gerado
-        return redirect(url_for('tela_pagamento'))
-
-@app.route('/pagamento')
-def tela_pagamento():
-    if 'usuario' not in session or 'filename_pendente' not in session:
-        return redirect(url_for('painel'))
-    return render_template_string(HTML_PAGAMENTO, filename=session['filename_pendente'], total_linhas=session['total_linhas'], valor_total=session['valor_total'], qr_code=session.get('qr_code', ''))
-
-@app.route('/verificar_pagamento', methods=['GET'])
-def verificar_pagamento():
-    if 'usuario' not in session: return redirect(url_for('index'))
-    if session.get('payment_id') == "manual_pix":
-        session['pago'] = True
-        return redirect(url_for('tela_download'))
-    try:
-        resp = requests.get(f"https://api.mercadopago.com/v1/payments/{session.get('payment_id')}", headers={"Authorization": f"Bearer {ACCESS_TOKEN_MP}"}, timeout=10)
-        if resp.status_code == 200 and resp.json().get("status") == "approved":
-            session['pago'] = True
-            return redirect(url_for('tela_download'))
-    except:
-        pass
-    return render_template_string(HTML_AGUARDANDO, filename=session.get('filename_pendente'), valor_total=session.get('valor_total'), aviso="O Pix ainda não foi compensado.")
-
-@app.route('/download_liberado')
-def tela_download():
-    if not session.get('pago') or 'filename_pendente' not in session: return redirect(url_for('painel'))
-    return render_template_string(HTML_DOWNLOAD)
-
-@app.route('/processar_e_baixar', methods=['POST'])
-def processar_e_baixar():
-    if not session.get('pago') or 'filename_pendente' not in session: return "Acesso negado.", 403
-    filename = session['filename_pendente']
-    input_path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(input_path): return "Ficheiro expirado", 404
-    
-    df = pd.read_csv(input_path) if filename.endswith('.csv') else pd.read_excel(input_path)
-    for col in df.columns:
-        cl = col.lower()
-        if 'nome' in cl: df[col] = df[col].apply(limpar_nome)
-        elif 'email' in cl or 'e-mail' in cl: df[col] = df[col].apply(limpar_email)
-        elif 'tel' in cl or 'cel' in cl or 'fone' in cl or 'whatsapp' in cl: df[col] = df[col].apply(limpar_telefone)
-            
-    df = df.drop_duplicates()
-    coluna_nome = next((c for c in df.columns if 'nome' in c.lower()), None)
-    if coluna_nome: df = df.sort_values(by=coluna_nome, ascending=True)
-    
-    output_filename = "limpo_" + filename
-    output_path = os.path.join(UPLOAD_FOLDER, output_filename)
-    if output_filename.endswith('.csv'): df.to_csv(output_path, index=False, encoding='utf-8-sig')
-    else: df.to_excel(output_path, index=False)
-    
-    response = send_file(output_path, as_attachment=True)
-    @response.call_on_close
-    def limpar_tudo():
-        try:
-            if os.path.exists(input_path): os.remove(input_path)
-            if os.path.exists(output_path): os.remove(output_path)
-            session.pop('pago', None)
-            session.pop('filename_pendente', None)
-        except: pass
-    return response
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('index'))
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    <titl
