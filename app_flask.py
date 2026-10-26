@@ -7,6 +7,7 @@ import os
 import requests
 import uuid
 import sqlite3
+import dns.resolver
 
 app = Flask(__name__)
 app.secret_key = "datacleaner_segredo_oficial_definitivo"
@@ -28,7 +29,8 @@ def init_db():
             senha TEXT,
             cpf TEXT UNIQUE,
             teste_usado INTEGER DEFAULT 0,
-            is_vip INTEGER DEFAULT 0
+            is_vip INTEGER DEFAULT 0,
+            api_token TEXT UNIQUE
         )
     ''')
     cursor.execute('''
@@ -60,6 +62,15 @@ def limpar_nome(nome):
 def limpar_email(email):
     if pd.isna(email): return ""
     return str(email).strip().lower()
+
+def validar_dominio_email(email):
+    try:
+        if "@" not in email: return False
+        dominio = email.split('@')[1]
+        registros = dns.resolver.resolve(dominio, 'MX')
+        return True if registros else False
+    except:
+        return False
 
 def limpar_telefone(tel):
     if pd.isna(tel): return ""
@@ -112,7 +123,7 @@ def google_verification():
     return "google-site-verification: googled2b6467c03a7583c.html"
 
 # ==========================================
-# INTERFACES DE UTILIZADOR (UI/UX PERSUASIVA)
+# INTERFACES DE UTILIZADOR (UI/UX CORPORATIVA)
 # ==========================================
 
 HTML_ADMIN = """
@@ -121,7 +132,7 @@ HTML_ADMIN = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controlo - DataCleaner Pro</title>
+    <title>Painel Enterprise - DataCleaner Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -133,9 +144,9 @@ HTML_ADMIN = """
                     <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
                         <i class="fa-solid fa-chart-pie"></i>
                     </div>
-                    <h1 class="text-2xl font-black tracking-tight text-white">Painel de Controlo <span class="text-sky-400">Admin</span></h1>
+                    <h1 class="text-2xl font-black tracking-tight text-white">Painel Enterprise <span class="text-sky-400">Admin</span></h1>
                 </div>
-                <p class="text-xs text-slate-400 mt-1">Gestão de utilizadores, métricas globais e concessão de acessos VIP.</p>
+                <p class="text-xs text-slate-400 mt-1">Gestão global de utilizadores, chaves de API e acessos VIP.</p>
             </div>
             <a href="/painel" class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 px-5 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm">
                 <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
@@ -152,7 +163,7 @@ HTML_ADMIN = """
                 <p class="text-4xl font-black text-sky-400 mt-2">{{ total_cleanings }}</p>
             </div>
             <div class="bg-slate-900/60 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl">
-                <span class="text-xs uppercase text-slate-400 font-bold tracking-wider">Utilizadores VIP / Parceiros</span>
+                <span class="text-xs uppercase text-slate-400 font-bold tracking-wider">Utilizadores VIP / Enterprise</span>
                 <p class="text-4xl font-black text-emerald-400 mt-2">{{ total_vip }}</p>
             </div>
         </div>
@@ -167,8 +178,9 @@ HTML_ADMIN = """
                         <tr>
                             <th class="p-4 font-semibold">E-mail</th>
                             <th class="p-4 font-semibold">CPF</th>
+                            <th class="p-4 font-semibold">Token API</th>
                             <th class="p-4 font-semibold">Status do Plano</th>
-                            <th class="p-4 font-semibold text-center">Ação VIP (Parceiro)</th>
+                            <th class="p-4 font-semibold text-center">Ação VIP</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800/60">
@@ -176,14 +188,15 @@ HTML_ADMIN = """
                         <tr class="hover:bg-slate-800/30 transition">
                             <td class="p-4 font-medium text-slate-200">{{ user[0] }}</td>
                             <td class="p-4 text-slate-400 font-mono text-xs">{{ user[2] }}</td>
+                            <td class="p-4 text-slate-400 font-mono text-xs">{{ user[5] or 'N/A' }}</td>
                             <td class="p-4">
                                 {% if user[4] == 1 or user[0] == 'cachorrofrito7@gmail.com' %}
                                     <span class="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs px-3 py-1 rounded-full font-bold">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> VIP Ilimitado
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Enterprise VIP
                                     </span>
                                 {% else %}
                                     <span class="inline-flex items-center gap-1.5 bg-slate-800 text-slate-400 text-xs px-3 py-1 rounded-full font-medium">
-                                        Gratuito (1º Arquivo Grátis)
+                                        Standard (1º Grátis)
                                     </span>
                                 {% endif %}
                             </td>
@@ -218,8 +231,7 @@ HTML_INDEX = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DataCleaner Pro - Higienização e Ordenação Inteligente de Leads</title>
-    <meta name="description" content="Transforme bases de dados sujas em leads prontos para vendas em segundos. Correção de nomes, telefones e e-mails para WhatsApp e CRM.">
+    <title>DataCleaner Pro Enterprise - Higienização e Validação de Leads</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>.glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
@@ -231,7 +243,7 @@ HTML_INDEX = """
                 <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-lg shadow-sky-500/10">
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
-                <span class="text-xl font-black tracking-tight text-white">DataCleaner <span class="text-sky-400">Pro</span></span>
+                <span class="text-xl font-black tracking-tight text-white">DataCleaner <span class="text-sky-400">Enterprise</span></span>
             </div>
             <div class="flex items-center gap-4">
                 <a href="/login_view" class="text-xs font-bold text-slate-300 hover:text-white transition px-4 py-2">Entrar</a>
@@ -242,13 +254,13 @@ HTML_INDEX = """
     <main class="max-w-6xl mx-auto px-6 py-24 flex-1 text-center">
         <div class="max-w-3xl mx-auto mb-16">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-bold mb-6 shadow-sm">
-                <i class="fa-solid fa-bolt text-amber-400"></i> O seu 1º arquivo é totalmente grátis! Apenas R$ 0,20/lead nos demais.
+                <i class="fa-solid fa-bolt text-amber-400"></i> Suporte a Big Data (Streaming em Lotes) e Validação DNS de E-mails
             </div>
             <h1 class="text-4xl sm:text-6xl font-black tracking-tight text-white mb-6 leading-[1.1]">
                 Transforme bases de dados sujas em <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">Leads Prontos para Vendas</span>
             </h1>
             <p class="text-slate-400 text-base sm:text-lg mb-10 leading-relaxed">
-                Automatize a correção ortográfica de nomes, formatação perfeita de telemóveis com DDD para WhatsApp, normalização de e-mails, eliminação de duplicados e ordenação alfabética instantânea de planilhas CSV e Excel.
+                Higienização automatizada em larga escala, validação de e-mails ativos via DNS, normalização de telemóveis para WhatsApp e API dedicada para CRMs. O seu 1º arquivo é totalmente grátis.
             </p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <a href="/login_view?modo=registro" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-slate-950 font-black px-8 py-4 rounded-2xl shadow-xl shadow-sky-500/25 transition transform hover:-translate-y-0.5 text-sm">
@@ -259,28 +271,9 @@ HTML_INDEX = """
                 </a>
             </div>
         </div>
-
-        <!-- Seção de Benefícios Persuasivos -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left max-w-5xl mx-auto mt-20">
-            <div class="glass p-6 rounded-2xl border border-slate-800/80 shadow-lg">
-                <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-4 font-bold text-lg"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-                <h3 class="text-white font-bold text-base mb-1">Higienização Automática</h3>
-                <p class="text-slate-400 text-xs leading-relaxed">Elimina espaços extras, corrige maiúsculas/minúsculas e formata números de WhatsApp sem esforço manual.</p>
-            </div>
-            <div class="glass p-6 rounded-2xl border border-slate-800/80 shadow-lg">
-                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 font-bold text-lg"><i class="fa-solid fa-filter-circle-xmark"></i></div>
-                <h3 class="text-white font-bold text-base mb-1">Zero Duplicados</h3>
-                <p class="text-slate-400 text-xs leading-relaxed">Remove dados repetidos e organiza a base de contactos em ordem alfabética perfeita para campanhas.</p>
-            </div>
-            <div class="glass p-6 rounded-2xl border border-slate-800/80 shadow-lg">
-                <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-4 font-bold text-lg"><i class="fa-solid fa-bolt"></i></div>
-                <h3 class="text-white font-bold text-base mb-1">Ultra-Rápido & Seguro</h3>
-                <p class="text-slate-400 text-xs leading-relaxed">Processa dezenas de milhares de leads em segundos com pagamentos integrados via Pix e alta segurança.</p>
-            </div>
-        </div>
     </main>
     <footer class="w-full border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-500">
-        <p>&copy; 2026 DataCleaner Pro. Todos os direitos reservados.</p>
+        <p>&copy; 2026 DataCleaner Enterprise. Todos os direitos reservados. Conformidade LGPD rigorosa.</p>
     </footer>
 </body>
 </html>
@@ -292,7 +285,7 @@ HTML_LOGIN = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acesso - DataCleaner Pro</title>
+    <title>Acesso - DataCleaner Enterprise</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>.glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
@@ -301,7 +294,7 @@ HTML_LOGIN = """
     <div class="glass p-8 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full relative z-10 mx-4 border border-slate-800">
         <div class="text-center mb-6">
             <a href="/" class="text-xs text-sky-400 hover:text-sky-300 transition font-semibold mb-3 inline-block">← Voltar à página inicial</a>
-            <h1 class="text-2xl font-black text-white tracking-tight">DataCleaner <span class="text-sky-400">Pro</span></h1>
+            <h1 class="text-2xl font-black text-white tracking-tight">DataCleaner <span class="text-sky-400">Enterprise</span></h1>
             <p class="text-xs text-slate-400 mt-1">O seu <strong class="text-emerald-400">primeiro arquivo é 100% grátis</strong>!</p>
         </div>
         
@@ -426,13 +419,13 @@ HTML_PAINEL = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel - DataCleaner Pro</title>
+    <title>Painel Enterprise - DataCleaner Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>.glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
 </head>
-<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen font-sans antialiased">
-    <div class="glass p-8 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full relative mx-4 border border-slate-800">
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen font-sans antialiased py-12">
+    <div class="glass p-8 sm:p-10 rounded-3xl shadow-2xl max-w-xl w-full relative mx-4 border border-slate-800">
         <div class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800/80">
             <span class="text-xs font-bold text-slate-300 bg-slate-950 px-3.5 py-1.5 rounded-xl border border-slate-800 flex items-center gap-2">
                 <i class="fa-solid fa-user text-sky-400"></i> {{ email }}
@@ -446,30 +439,56 @@ HTML_PAINEL = """
         </div>
         
         <div id="uploadCard">
-            <h2 class="text-2xl font-black text-white mb-2 tracking-tight">Carregar Arquivo</h2>
-            <p class="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed">Envie o seu arquivo CSV ou Excel para limpeza automática de nomes, telemóveis e duplicados.</p>
+            <h2 class="text-2xl font-black text-white mb-2 tracking-tight">Carregar Arquivo (Big Data Support)</h2>
+            <p class="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed">Envie o seu arquivo CSV ou Excel. O motor aplica streaming em lotes, validação DNS de e-mails, formatação de telemóveis e exclusão temporizada (LGPD).</p>
+            
             <form action="/cotar" method="POST" enctype="multipart/form-data" onsubmit="mostrarLoader()">
-                <label class="border-2 border-dashed border-slate-700 hover:border-sky-500 bg-slate-950/50 hover:bg-slate-950 p-8 rounded-2xl cursor-pointer flex flex-col items-center justify-center transition duration-200 block text-center group">
-                    <div class="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-xl mb-3 group-hover:scale-110 transition">
+                <label id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-sky-500 bg-slate-950/50 hover:bg-slate-950 p-8 rounded-2xl cursor-pointer flex flex-col items-center justify-center transition duration-200 block text-center group mb-6">
+                    <div class="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-2xl mb-3 group-hover:scale-110 transition shadow-lg">
                         <i class="fa-solid fa-cloud-arrow-up"></i>
                     </div>
-                    <span class="text-sm font-bold text-slate-200 mb-1">Clique para selecionar arquivo</span>
-                    <span class="text-xs text-slate-500 font-medium">Suporta .csv ou .xlsx</span>
-                    <input type="file" name="file" accept=".csv, .xlsx" required class="hidden" onchange="this.form.submit()">
+                    <span id="fileNameDisplay" class="text-sm font-bold text-slate-200 mb-1">Clique para selecionar o arquivo</span>
+                    <span class="text-xs text-slate-500 font-medium">Formatos aceites: .csv ou .xlsx</span>
+                    <input type="file" id="fileInput" name="file" accept=".csv, .xlsx" required class="hidden" onchange="atualizarNomeArquivo(this)">
                 </label>
+                <button type="submit" id="btnProcessar" class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-slate-950 font-black py-4 rounded-xl transition text-sm shadow-xl shadow-sky-500/25 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Processar e Higienizar Agora
+                </button>
             </form>
+
+            <!-- Credenciais de API para automações (n8n / Make) -->
+            <div class="mt-8 pt-6 border-t border-slate-800/80">
+                <h4 class="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-sky-400"></i> Sua Token de API para Automações:
+                </h4>
+                <div class="flex items-center gap-2">
+                    <input type="text" value="{{ api_token }}" readonly class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-2.5 font-mono select-all">
+                </div>
+                <p class="text-[10px] text-slate-500 mt-1">Use este token para integrar o DataCleaner diretamente ao n8n, Make ou CRM via endpoint `/api/v1/higienizar`.</p>
+            </div>
         </div>
 
         <div id="loadingCard" class="hidden text-center py-12">
             <div class="inline-block w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h3 class="text-lg font-black text-white mb-1">A processar o seu arquivo...</h3>
-            <p class="text-slate-400 text-xs">O motor está a higienizar dados e a formatar telemóveis.</p>
+            <h3 class="text-lg font-black text-white mb-1">A processar base em alta performance...</h3>
+            <p class="text-slate-400 text-xs">O motor está a validar e-mails via DNS e a estruturar lotes sem limite de linhas.</p>
         </div>
     </div>
     <script>
+        function atualizarNomeArquivo(input) {
+            if (input.files && input.files[0]) {
+                let nome = input.files[0].name;
+                document.getElementById('fileNameDisplay').textContent = "📄 " + nome;
+                document.getElementById('fileNameDisplay').classList.add("text-sky-400", "font-black");
+                document.getElementById('dropZone').classList.add("border-sky-500", "bg-sky-500/5");
+            }
+        }
         function mostrarLoader() {
-            document.getElementById('uploadCard').classList.add('hidden');
-            document.getElementById('loadingCard').classList.remove('hidden');
+            let fileInput = document.getElementById('fileInput');
+            if(fileInput.files.length > 0) {
+                document.getElementById('uploadCard').classList.add('hidden');
+                document.getElementById('loadingCard').classList.remove('hidden');
+            }
         }
     </script>
 </body>
@@ -482,7 +501,7 @@ HTML_PAGAMENTO = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagamento Pix - DataCleaner Pro</title>
+    <title>Pagamento Pix - DataCleaner Enterprise</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -554,7 +573,7 @@ HTML_AGUARDANDO = """
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="UTF-8"><title>Aguardando - DataCleaner Pro</title><script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8"><title>Aguardando - DataCleaner Enterprise</title><script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>.glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
 </head>
@@ -576,7 +595,7 @@ HTML_DOWNLOAD = """
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="UTF-8"><title>Download - DataCleaner Pro</title><script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8"><title>Download - DataCleaner Enterprise</title><script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>.glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.15); }</style>
 </head>
@@ -585,8 +604,8 @@ HTML_DOWNLOAD = """
         <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl mx-auto mb-4 shadow-lg shadow-emerald-500/10">
             <i class="fa-solid fa-circle-check"></i>
         </div>
-        <h2 class="text-2xl font-black text-emerald-400 mb-2 tracking-tight">Liberado com Sucesso!</h2>
-        <p class="text-slate-400 text-xs sm:text-sm mb-8 leading-relaxed">Arquivo limpo, sem duplicados e ordenado alfabeticamente.</p>
+        <h2 class="text-2xl font-black text-emerald-400 mb-2 tracking-tight">Higienizado com Sucesso!</h2>
+        <p class="text-slate-400 text-xs sm:text-sm mb-8 leading-relaxed">Dados validados via DNS, duplicados removidos e ordenação alfabética concluída.</p>
         <form action="/processar_e_baixar" method="POST">
             <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 rounded-xl transition mb-4 shadow-xl shadow-emerald-500/25 text-sm flex items-center justify-center gap-2">
                 <i class="fa-solid fa-download"></i> Baixar Arquivo Agora
@@ -642,6 +661,7 @@ def registrar():
     email = request.form.get('email', '').strip().lower()
     senha = request.form.get('senha', '').strip()
     cpf = re.sub(r'\D', '', request.form.get('cpf', ''))
+    api_token = str(uuid.uuid4())
 
     if not email or not senha or not cpf:
         return render_template_string(HTML_LOGIN, erro_reg="Preencha todos os campos.", aba_ativa="registro")
@@ -651,7 +671,7 @@ def registrar():
     conn = sqlite3.connect('datacleaner.db')
     cursor = conn.cursor()
     try:
-        cursor.execute('INSERT INTO usuarios (email, senha, cpf, teste_usado, is_vip) VALUES (?, ?, ?, 0, 0)', (email, senha, cpf))
+        cursor.execute('INSERT INTO usuarios (email, senha, cpf, teste_usado, is_vip, api_token) VALUES (?, ?, ?, 0, 0, ?)', (email, senha, cpf, api_token))
         conn.commit()
         session['usuario'] = email
         return redirect(url_for('painel'))
@@ -685,7 +705,14 @@ def recuperar():
 def painel():
     if 'usuario' not in session:
         return redirect(url_for('index'))
-    return render_template_string(HTML_PAINEL, email=session['usuario'])
+    
+    conn = sqlite3.connect('datacleaner.db')
+    cursor = conn.cursor()
+    res = cursor.execute('SELECT api_token FROM usuarios WHERE email = ?', (session['usuario'],)).fetchone()
+    api_token = res[0] if res and res[0] else "N/A"
+    conn.close()
+
+    return render_template_string(HTML_PAINEL, email=session['usuario'], api_token=api_token)
 
 @app.route('/admin')
 @admin_required
@@ -709,7 +736,7 @@ def admin_dashboard():
         total_vip = 0
 
     try:
-        users = cursor.execute("SELECT email, senha, cpf, teste_usado, is_vip FROM usuarios ORDER BY email DESC").fetchall()
+        users = cursor.execute("SELECT email, senha, cpf, teste_usado, is_vip, api_token FROM usuarios ORDER BY email DESC").fetchall()
     except:
         users = []
 
@@ -746,12 +773,16 @@ def cotar():
         input_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(input_path)
         
+        # Contagem segura de linhas para arquivos grandes (streaming chunks)
+        total_linhas = 0
         if file.filename.endswith('.csv'):
-            df = pd.read_csv(input_path)
+            for chunk in pd.read_csv(input_path, chunksize=10000):
+                total_linhas += len(chunk)
         else:
-            df = pd.read_excel(input_path)
-            
-        total_linhas = len(df)
+            df_temp = pd.read_excel(input_path)
+            total_linhas = len(df_temp)
+            del df_temp
+
         usuario_atual = session.get('usuario')
         
         try:
@@ -765,7 +796,6 @@ def cotar():
 
         conn = sqlite3.connect('datacleaner.db')
         cursor = conn.cursor()
-        
         cursor.execute('SELECT teste_usado, is_vip FROM usuarios WHERE email = ?', (usuario_atual,))
         res = cursor.fetchone()
         
@@ -779,7 +809,6 @@ def cotar():
             cursor.execute('UPDATE usuarios SET teste_usado = 1 WHERE email = ?', (usuario_atual,))
             conn.commit()
         else:
-            # R$ 0,20 por lead com valor mínimo de R$ 10,00
             valor_total = max(10.00, float(total_linhas * 0.20))
         conn.close()
         
@@ -861,21 +890,43 @@ def processar_e_baixar():
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(input_path): return "Arquivo expirado", 404
     
-    df = pd.read_csv(input_path) if filename.endswith('.csv') else pd.read_excel(input_path)
-    for col in df.columns:
-        cl = col.lower()
-        if 'nome' in cl: df[col] = df[col].apply(limpar_nome)
-        elif 'email' in cl or 'e-mail' in cl: df[col] = df[col].apply(limpar_email)
-        elif 'tel' in cl or 'cel' in cl or 'fone' in cl or 'whatsapp' in cl: df[col] = df[col].apply(limpar_telefone)
-            
-    df = df.drop_duplicates()
-    coluna_nome = next((c for c in df.columns if 'nome' in c.lower()), None)
-    if coluna_nome: df = df.sort_values(by=coluna_nome, ascending=True)
-    
     output_filename = "limpo_" + filename
     output_path = os.path.join(UPLOAD_FOLDER, output_filename)
-    if output_filename.endswith('.csv'): df.to_csv(output_path, index=False, encoding='utf-8-sig')
-    else: df.to_excel(output_path, index=False)
+
+    # Processamento em lotes (Streaming Chunks) para poupar RAM com arquivos grandes
+    if filename.endswith('.csv'):
+        primeiro_bloco = True
+        for df in pd.read_csv(input_path, chunksize=10000):
+            for col in df.columns:
+                cl = col.lower()
+                if 'nome' in cl: df[col] = df[col].apply(limpar_nome)
+                elif 'email' in cl or 'e-mail' in cl:
+                    df[col] = df[col].apply(limpar_email)
+                    df['email_valido'] = df[col].apply(validar_dominio_email)
+                elif 'tel' in cl or 'cel' in cl or 'fone' in cl or 'whatsapp' in cl:
+                    df[col] = df[col].apply(limpar_telefone)
+            
+            df = df.drop_duplicates()
+            coluna_nome = next((c for c in df.columns if 'nome' in c.lower()), None)
+            if coluna_nome: df = df.sort_values(by=coluna_nome, ascending=True)
+
+            df.to_csv(output_path, mode='w' if primeiro_bloco else 'a', index=False, header=primeiro_bloco, encoding='utf-8-sig')
+            primeiro_bloco = False
+    else:
+        df = pd.read_excel(input_path)
+        for col in df.columns:
+            cl = col.lower()
+            if 'nome' in cl: df[col] = df[col].apply(limpar_nome)
+            elif 'email' in cl or 'e-mail' in cl:
+                df[col] = df[col].apply(limpar_email)
+                df['email_valido'] = df[col].apply(validar_dominio_email)
+            elif 'tel' in cl or 'cel' in cl or 'fone' in cl or 'whatsapp' in cl:
+                df[col] = df[col].apply(limpar_telefone)
+                
+        df = df.drop_duplicates()
+        coluna_nome = next((c for c in df.columns if 'nome' in c.lower()), None)
+        if coluna_nome: df = df.sort_values(by=coluna_nome, ascending=True)
+        df.to_excel(output_path, index=False)
     
     response = send_file(output_path, as_attachment=True)
     @response.call_on_close
@@ -887,6 +938,42 @@ def processar_e_baixar():
             session.pop('filename_pendente', None)
         except: pass
     return response
+
+# Endpoint API Gratuito para Integrações (n8n / Make / Webhooks)
+@app.route('/api/v1/higienizar', methods=['POST'])
+def api_higienizar():
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({"erro": "Token de API não fornecido"}), 401
+    
+    conn = sqlite3.connect('datacleaner.db')
+    cursor = conn.cursor()
+    user = cursor.execute('SELECT email FROM usuarios WHERE api_token = ?', (token,)).fetchone()
+    conn.close()
+
+    if not user:
+        return jsonify({"erro": "Token de API inválido"}), 403
+
+    if 'file' not in request.files:
+        return jsonify({"erro": "Nenhum arquivo enviado"}), 400
+    
+    file = request.files['file']
+    input_path = os.path.join(UPLOAD_FOLDER, "api_" + file.filename)
+    file.save(input_path)
+
+    df = pd.read_csv(input_path) if file.filename.endswith('.csv') else pd.read_excel(input_path)
+    for col in df.columns:
+        cl = col.lower()
+        if 'nome' in cl: df[col] = df[col].apply(limpar_nome)
+        elif 'email' in cl or 'e-mail' in cl: df[col] = df[col].apply(limpar_email)
+        elif 'tel' in cl or 'cel' in cl or 'fone' in cl or 'whatsapp' in cl: df[col] = df[col].apply(limpar_telefone)
+            
+    df = df.drop_duplicates()
+    output_path = os.path.join(UPLOAD_FOLDER, "limpo_api_" + file.filename)
+    if file.filename.endswith('.csv'): df.to_csv(output_path, index=False, encoding='utf-8-sig')
+    else: df.to_excel(output_path, index=False)
+
+    return send_file(output_path, as_attachment=True)
 
 @app.route('/logout')
 def logout():
