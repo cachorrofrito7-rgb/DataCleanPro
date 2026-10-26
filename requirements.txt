@@ -1,5 +1,6 @@
 Flask
 pandas
-requests
 openpyxl
+requests
 gunicorn
+dnspython
